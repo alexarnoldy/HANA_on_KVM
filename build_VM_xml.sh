@@ -116,6 +116,8 @@ bash /tmp/VIRT-INSTALL-CMD.sh | xmllint --format --xmlout --recover - 2>/dev/nul
 ## Update hpet timer
 xml ed -u "domain/clock/timer[@name='hpet' and @present='no']"/@present -v yes $FILE_LOCATION > $FILE_LOCATION.tmp
 
+
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 rm /tmp/VM_CPU_CORES_ITERATED
 rm /tmp/VM_CPU_CORES_ITERATED_SIBLINGS 
 rm /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ
