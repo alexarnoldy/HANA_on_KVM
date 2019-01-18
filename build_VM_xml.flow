@@ -1,0 +1,24 @@
+
+
+
+##** Gather CPU cores to be used by the VM. Don't include hyper-thread siblings
+
+##** Gather how many CPU cores will be used for emulator threads
+
+##** Gather how many CPU cores will be used for iothreads
+
+##** Match hyper-thread siblings. Remove duplicates
+
+##** Identify hyper-thread siblings for the quantity of cores requested for emulator threads
+
+##** Identify hyper-thread siblings for the quantity of cores requested for iothreads
+
+##** Identify hyper-thread siblings for the quantity of cores remaining for the VM
+
+##** Iterate through emulator thread list to add the pinning option information for the command
+
+##** Iterate through iothread list to add the pinning option information for the command
+
+##** Iterate through the remaining cores list to add the pinning option information for the command
+
+##** Construct the virt-install command, including quantity of vCPUs, memory, and network (NEED TO GATHER NON-CPU DETAILS)
