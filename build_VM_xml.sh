@@ -1,5 +1,6 @@
 #!/bin/bash
 
+##### NEED TO TEST FOR XMLLINT AND XMLSTARLET (AKA XML)
 ## Script to create VM XML file, including vCPU, emulator, IOThread and NUMA node pinnings
 RED='\033[0;31m'
 LBLUE='\033[1;36m'
@@ -9,8 +10,11 @@ echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
 read VM_NAME
 echo ""
 echo ""
-echo -e "    Enter the absolute path name and output file name:"
-read FILE_LOCATION
+echo -e "    Enter the absolute path name to place the output file:"
+read PATH_TO_OUTPUT_FILE
+FILE_LOCATION=$PATH_TO_OUTPUT_FILE/$VM_NAME.xml
+echo ""
+echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
 echo ""
 echo ""
 
@@ -61,16 +65,16 @@ echo -e "    How many CPU cores will be used for ${LBLUE}QEMU IOThreads${NC}?"
 
 read IOTHREAD_COUNT
 
-echo ""
-echo ""
-echo ""
-echo ""
 
-
-## Establish list of logical CPUs for emulator threads
+## Establish list of logical CPUs for emulator threads from the beginning of the list of logical CPUs allocated to the VM
 cat /dev/null > /tmp/VM_CPU_CORES_EMULATOR
 head -`echo $EMULATOR_COUNT` /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ > /tmp/VM_CPU_CORES_EMULATOR
-tr , '\n' < /tmp/VM_CPU_CORES_EMULATOR > /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
+#tr , '\n' < /tmp/VM_CPU_CORES_EMULATOR > /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
+
+## Process the list of emulator threads, removing the trailing comma
+VM_CPU_CORES_EMULATOR=`tr '\n' , < /tmp/VM_CPU_CORES_EMULATOR `
+echo "${VM_CPU_CORES_EMULATOR::-1}" > /tmp/VM_CPU_CORES_EMULATOR.tmp
+mv /tmp/VM_CPU_CORES_EMULATOR.tmp /tmp/VM_CPU_CORES_EMULATOR
 
 echo ""
 #cat /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
@@ -111,8 +115,11 @@ done
 
 #while [  $COUNTER -le $LINES ]; do THIS_LINE=`head  -$COUNTER /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | tail -1`; printf "vcpupin"$COUNTER".vcpu="$COUNTER",vcpupin"$COUNTER".cpuset="$THIS_LINE', \' >> /tmp/VIRT-INSTALL-CMD.sh; echo ""; let COUNTER=COUNTER+1; LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`; done
 
-
+## For some unknown reason, virt-install creates two copies of the output in the output file
+## The following line removes duplicates. It should remove the second instance of <domain...> but the actual results remain to be seen
 bash /tmp/VIRT-INSTALL-CMD.sh | xmllint --format --xmlout --recover - 2>/dev/null > $FILE_LOCATION
+
+## Use xml el -v <file> to see all fo the elements, attributes, and values 
 ## Update hpet timer
 xml ed -u "domain/clock/timer[@name='hpet' and @present='no']"/@present -v yes $FILE_LOCATION > $FILE_LOCATION.tmp
 
@@ -121,8 +128,8 @@ mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 rm /tmp/VM_CPU_CORES_ITERATED
 rm /tmp/VM_CPU_CORES_ITERATED_SIBLINGS 
 rm /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ
-rm /tmp/VM_CPU_CORES_EMULATOR
-rm /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
+#rm /tmp/VM_CPU_CORES_EMULATOR
+#rm /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
 rm /tmp/VM_CPU_CORES_IOTHREADS
 rm /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
 rm /tmp/VM_CPU_CORES_REMAINING
