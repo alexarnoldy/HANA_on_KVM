@@ -122,6 +122,10 @@ bash /tmp/VIRT-INSTALL-CMD.sh | xmllint --format --xmlout --recover - 2>/dev/nul
 ## Use xml el -v <file> to see all fo the elements, attributes, and values 
 ## Update hpet timer
 xml ed -u "domain/clock/timer[@name='hpet' and @present='no']"/@present -v yes $FILE_LOCATION > $FILE_LOCATION.tmp
+## These two commands cannot be separated as the first one creates the .tmp file and the second one consumes that file
+## Add emulatorpinning
+xml ed -s "/domain/cputune" --type elem -n "emulatorpin cpuset='`cat /tmp/VM_CPU_CORES_EMULATOR`'" -v "" $FILE_LOCATION.tmp > $FILE_LOCATION
+
 
 
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
