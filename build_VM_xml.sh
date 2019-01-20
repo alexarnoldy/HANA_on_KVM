@@ -152,7 +152,7 @@ done
 #done
 
 
-
+#### Begin xml (xmlstarlet) updates to the base file created by virt-install
 #### Use xml el -v <file> to see all fo the elements, attributes, and values #### 
 
 ## Update hpet timer
