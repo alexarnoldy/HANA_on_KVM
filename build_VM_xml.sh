@@ -123,9 +123,21 @@ bash /tmp/VIRT-INSTALL-CMD.sh | xmllint --format --xmlout --recover - 2>/dev/nul
 ## Update hpet timer
 xml ed -u "domain/clock/timer[@name='hpet' and @present='no']"/@present -v yes $FILE_LOCATION > $FILE_LOCATION.tmp
 ## These two commands cannot be separated as the first one creates the .tmp file and the second one consumes that file
-## Add emulatorpinning
+## Add emulatorpinning to the XML file
 xml ed -s "/domain/cputune" --type elem -n "emulatorpin cpuset='`cat /tmp/VM_CPU_CORES_EMULATOR`'" -v "" $FILE_LOCATION.tmp > $FILE_LOCATION
 
+## Add IOThreads to the XML file
+COUNTER=1 
+LINES=`wc -l /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` 
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+while [  $COUNTER -le $LINES ] 
+do 
+	THIS_LINE=`head  -$COUNTER /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | tail -1`
+	xml ed -s "/domain/cputune" --type elem -n "iothreadpin iothread='`echo $COUNTER`' cpuset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
+	mv $FILE_LOCATION.tmp $FILE_LOCATION
+	let COUNTER=COUNTER+1
+	LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
+done
 
 
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
@@ -134,8 +146,8 @@ rm /tmp/VM_CPU_CORES_ITERATED_SIBLINGS
 rm /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ
 #rm /tmp/VM_CPU_CORES_EMULATOR
 #rm /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
-rm /tmp/VM_CPU_CORES_IOTHREADS
-rm /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
+#rm /tmp/VM_CPU_CORES_IOTHREADS
+#rm /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
 rm /tmp/VM_CPU_CORES_REMAINING
 rm /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
 
