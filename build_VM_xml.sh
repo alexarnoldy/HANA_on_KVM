@@ -145,6 +145,7 @@ do
 done
 
 ## Add NUMA node pinning to the XML file
+numactl --hardware | grep cpus | sed 's/node /node/' > /tmp/NUMA_NODES_TO_CPUS
 COUNTER=1
 ## Isolate the NUMA nodes in to separate files
 LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
