@@ -144,6 +144,21 @@ do
 	LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
 done
 
+## Add NUMA node pinning to the XML file
+COUNTER=1
+## Isolate the NUMA nodes in to separate files
+LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
+while [  $COUNTER -le $LINES ] 
+do         
+	head  -$COUNTER /tmp/NUMA_NODES_TO_CPUS | tail -1 > /tmp/$COUNTER-NODE
+	let COUNTER=COUNTER+1
+	LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
+done
+## Find the NUMA nodes for each LCPU and compile them into a file
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+
+
+
 ## Update hpet timer
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed -u "domain/clock/timer[@name='hpet' and @present='no']"/@present -v yes $FILE_LOCATION > $FILE_LOCATION.tmp
