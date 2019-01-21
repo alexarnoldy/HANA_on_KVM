@@ -144,19 +144,6 @@ do
 	LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
 done
 
-## The old way of updating the virt-install command that results in it munging up the first pinning
-#COUNTER=1 
-#LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'` 
-#while [  $COUNTER -le $LINES ] 
-#do 
-#	THIS_LINE=`head  -$COUNTER /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | tail -1`
-#	printf "vcpupin"$COUNTER".vcpu="$COUNTER",vcpupin"$COUNTER".cpuset="$THIS_LINE',\' >> /tmp/VIRT-INSTALL-CMD.sh
-#	echo "" >> /tmp/VIRT-INSTALL-CMD.sh
-#	let COUNTER=COUNTER+1
-#	LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
-#done
-
-
 ## Update hpet timer
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed -u "domain/clock/timer[@name='hpet' and @present='no']"/@present -v yes $FILE_LOCATION > $FILE_LOCATION.tmp
