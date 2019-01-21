@@ -122,9 +122,14 @@ virt-install --name $VM_NAME --memory $MEMORY --vcpu $TOTAL_VCPUS --disk none --
 ## The following line removes duplicates. It should remove the second instance of <domain...> and everything inside it, but the actual results remain to be seen
 xmllint --format --xmlout --recover $FILE_LOCATION 2>/dev/null >  $FILE_LOCATION.tmp
 
-## Add cputune element to the XML file
+
+#### Begin xml (xmlstarlet) updates to the base file created by virt-install
+#### Use xml el -v <file> to see all fo the elements, attributes, and values #### 
+
+## Add cputune and numatune elements to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed --subnode "/domain" --type elem -n "cputune" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
+xml ed --subnode "/domain" --type elem -n "numatune" -v "" $FILE_LOCATION.tmp > $FILE_LOCATION
 
 ## Add vCPU pinning to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
@@ -151,9 +156,6 @@ done
 #	LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
 #done
 
-
-#### Begin xml (xmlstarlet) updates to the base file created by virt-install
-#### Use xml el -v <file> to see all fo the elements, attributes, and values #### 
 
 ## Update hpet timer
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
