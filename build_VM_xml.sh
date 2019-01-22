@@ -156,22 +156,24 @@ done
 sort /tmp/ALL_NUMA_NODES | uniq > /tmp/ALL_NUMA_NODES_UNIQ
 
 ## Process the list of NUMA nodes, removing the trailing comma
-ALL_NUMA_NODES_UNIQ=`tr '\n' , < /tmp/ALL_NUMA_NODES_UNIQ `
+ALL_NUMA_NODES_UNIQ=`tr '\n' , < /tmp/ALL_NUMA_NODES_UNIQ`
 echo "${ALL_NUMA_NODES_UNIQ::-1}" > /tmp/ALL_NUMA_NODES_COMMA_SEPARATED
+## Set up the memory mode for all NUMA nodes
 xml ed --subnode "/domain/numatune" --type elem -n "memory mode='strict' nodeset='`cat /tmp/ALL_NUMA_NODES_COMMA_SEPARATED`'" $FILE_LOCATION > $FILE_LOCATION.tmp
 
- 
+## Add NUMA node pinning to the XML file
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+COUNTER=1 
+LINES=`wc -l /tmp/ALL_NUMA_NODES_UNIQ | awk '{print$1}'` 
+while [  $COUNTER -le $LINES ] 
+do 
+	THIS_LINE=`head  -$COUNTER /tmp/ALL_NUMA_NODES_UNIQ | tail -1`
+	xml ed --subnode "/domain/numatune" --type elem -n "memnode cellid='`echo $COUNTER`' mode='strict' nodeset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
+	mv $FILE_LOCATION.tmp $FILE_LOCATION
+	let COUNTER=COUNTER+1
+	LINES=`wc -l /tmp/ALL_NUMA_NODES_UNIQ | awk '{print$1}'`
+done
 
-## Isolate the NUMA nodes in to separate files
-#COUNTER=1
-#LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
-#while [  $COUNTER -le $LINES ] 
-#do         
-#	head  -$COUNTER /tmp/NUMA_NODES_TO_CPUS | tail -1 > /tmp/$COUNTER-NODE
-#	let COUNTER=COUNTER+1
-#	LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
-#done
-## Find the NUMA nodes for each LCPU and compile them into a file
 
 
 
