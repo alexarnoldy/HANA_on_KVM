@@ -139,7 +139,7 @@ LINES=`wc -l /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'`
 while [  $COUNTER -le $LINES ] 
 do 
 	THIS_LINE=`head  -$COUNTER /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | tail -1`
-	xml ed --subnode "/domain/cputune" --type elem -n "vcpupin vcpu='`echo $COUNTER`' cpuset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
+	xml ed --subnode "/domain/cputune" --type elem -n "vcpupin vcpu='`echo $(( $COUNTER - 1 ))`' cpuset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
 	mv $FILE_LOCATION.tmp $FILE_LOCATION
 	let COUNTER=COUNTER+1
 	LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
@@ -168,7 +168,7 @@ LINES=`wc -l /tmp/ALL_NUMA_NODES_UNIQ | awk '{print$1}'`
 while [  $COUNTER -le $LINES ] 
 do 
 	THIS_LINE=`head  -$COUNTER /tmp/ALL_NUMA_NODES_UNIQ | tail -1`
-	xml ed --subnode "/domain/numatune" --type elem -n "memnode cellid='`echo $COUNTER`' mode='strict' nodeset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
+	xml ed --subnode "/domain/numatune" --type elem -n "memnode cellid='`echo $(( $COUNTER - 1 ))`' mode='strict' nodeset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
 	mv $FILE_LOCATION.tmp $FILE_LOCATION
 	let COUNTER=COUNTER+1
 	LINES=`wc -l /tmp/ALL_NUMA_NODES_UNIQ | awk '{print$1}'`
