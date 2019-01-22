@@ -129,7 +129,8 @@ xmllint --format --xmlout --recover $FILE_LOCATION 2>/dev/null >  $FILE_LOCATION
 ## Add cputune and numatune elements to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed --subnode "/domain" --type elem -n "cputune" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
-xml ed --subnode "/domain" --type elem -n "numatune" -v "" $FILE_LOCATION.tmp > $FILE_LOCATION
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+xml ed --subnode "/domain" --type elem -n "numatune" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
 
 ## Add vCPU pinning to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
@@ -153,6 +154,13 @@ do
 	grep -w $EACH /tmp/NUMA_NODES_TO_CPUS | awk -Fe '{print$2}' | awk '{print$1}' >> /tmp/ALL_NUMA_NODES
 done
 sort /tmp/ALL_NUMA_NODES | uniq > /tmp/ALL_NUMA_NODES_UNIQ
+
+## Process the list of NUMA nodes, removing the trailing comma
+ALL_NUMA_NODES_UNIQ=`tr '\n' , < /tmp/ALL_NUMA_NODES_UNIQ `
+echo "${ALL_NUMA_NODES_UNIQ::-1}" > /tmp/ALL_NUMA_NODES_COMMA_SEPARATED
+xml ed --subnode "/domain/numatune" --type elem -n "memory mode='strict' nodeset='`cat /tmp/ALL_NUMA_NODES_COMMA_SEPARATED`'" $FILE_LOCATION > $FILE_LOCATION.tmp
+
+ 
 
 ## Isolate the NUMA nodes in to separate files
 #COUNTER=1
