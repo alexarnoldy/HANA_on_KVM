@@ -145,18 +145,25 @@ do
 done
 
 ## Add NUMA node pinning to the XML file
-numactl --hardware | grep cpus | sed 's/node /node/' > /tmp/NUMA_NODES_TO_CPUS
-COUNTER=1
-## Isolate the NUMA nodes in to separate files
-LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
-while [  $COUNTER -le $LINES ] 
-do         
-	head  -$COUNTER /tmp/NUMA_NODES_TO_CPUS | tail -1 > /tmp/$COUNTER-NODE
-	let COUNTER=COUNTER+1
-	LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
-done
-## Find the NUMA nodes for each LCPU and compile them into a file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+numactl --hardware | grep cpus | sed 's/node /node/' > /tmp/NUMA_NODES_TO_CPUS
+cat /dev/null > /tmp/ALL_NUMA_NODES
+for EACH in `cat /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS`
+do 
+	grep -w $EACH /tmp/NUMA_NODES_TO_CPUS | awk -Fe '{print$2}' | awk '{print$1}' >> /tmp/ALL_NUMA_NODES
+done
+sort /tmp/ALL_NUMA_NODES | uniq > /tmp/ALL_NUMA_NODES_UNIQ
+
+## Isolate the NUMA nodes in to separate files
+#COUNTER=1
+#LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
+#while [  $COUNTER -le $LINES ] 
+#do         
+#	head  -$COUNTER /tmp/NUMA_NODES_TO_CPUS | tail -1 > /tmp/$COUNTER-NODE
+#	let COUNTER=COUNTER+1
+#	LINES=`wc -l /tmp/NUMA_NODES_TO_CPUS | awk '{print$1}'`
+#done
+## Find the NUMA nodes for each LCPU and compile them into a file
 
 
 
@@ -190,7 +197,7 @@ rm /tmp/VM_CPU_CORES_EMULATOR
 #rm /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
 rm /tmp/VM_CPU_CORES_IOTHREADS
 rm /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
-rm /tmp/VM_CPU_CORES_REMAINING
-rm /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
+#rm /tmp/VM_CPU_CORES_REMAINING
+#rm /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
 
 ###### virt-install --name test --memory 4096 --vcpu 2 --disk none --pxe --print-xml --dry-run --cputune vcpupin0.vcpu=0,vcpupin0.cpuset=2,vcpupin1.vcpu=1,vcpupin1.cpuset=8
