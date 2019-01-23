@@ -126,11 +126,21 @@ xmllint --format --xmlout --recover $FILE_LOCATION 2>/dev/null >  $FILE_LOCATION
 #### Begin xml (xmlstarlet) updates to the base file created by virt-install
 #### Use xml el -v <file> to see all fo the elements, attributes, and values #### 
 
-## Add cputune and numatune elements to the XML file
+## Add cputune, numatune and memoryBacking (plus hugepages) elements to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed --subnode "/domain" --type elem -n "cputune" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed --subnode "/domain" --type elem -n "numatune" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+xml ed --subnode "/domain" --type elem -n "memoryBacking" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+xml ed --subnode "/domain/memoryBacking" --type elem -n "hugepages" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+xml ed --subnode "/domain/memoryBacking" --type elem -n "nosharepages" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
+
+## Configure hugepages as 1GiB
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+xml ed --subnode "/domain/memoryBacking/hugepages" --type elem -n "page size='1048576' unit='KiB'" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp 
 
 ## Add vCPU pinning to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
