@@ -118,9 +118,9 @@ TOTAL_VCPUS=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$
 ## The following line removes duplicates. It should remove the second instance of <domain...> but the actual results remain to be seen
 #bash /tmp/VIRT-INSTALL-CMD.sh | xmllint --format --xmlout --recover - 2>/dev/null > $FILE_LOCATION
 
-virt-install --name $VM_NAME --memory $MEMORY --vcpu $TOTAL_VCPUS --disk none --pxe --print-xml --dry-run > $FILE_LOCATION
+virt-install --name $VM_NAME --memory $MEMORY --vcpu $TOTAL_VCPUS --disk none --pxe --print-xml 2 --dry-run > $FILE_LOCATION
 ## The following line removes duplicates. It should remove the second instance of <domain...> and everything inside it, but the actual results remain to be seen
-xmllint --format --xmlout --recover $FILE_LOCATION 2>/dev/null >  $FILE_LOCATION.tmp
+#xmllint --format --xmlout --recover $FILE_LOCATION 2>/dev/null >  $FILE_LOCATION.tmp
 
 
 #### Begin xml (xmlstarlet) updates to the base file created by virt-install
