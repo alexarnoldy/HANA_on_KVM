@@ -1,0 +1,9 @@
+## Gather and validate the NICs to be dedicated to DPDK
+## 
+## Read the NICs into an array
+echo Enter a space separated list of the NICs that will be dedicated to DPDK:
+
+read -a DPDK_DEDICATED_NICS
+
+## Validate the NICs exist on the system
+for EACH in ${DPDK_DEDICATED_NICS[@]}; do test -d /sys/class/net/$EACH || { echo "NIC $EACH doesn't have a listing in /sys/class/net. Aborting"; exit 1; } ; done

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+func_evaluate_contents_of_files () {
+### Function to evaluate the contents of multiple files against the first file in the series
+##
+## Usage: Set array FILE_ELEMENTS and global variables FILE_PATH_PREFIX, FILE_PATH_SUFFIX before entering the function.
+## For example:
+## FILE_ELEMENTS=(${DPDK_DEDICATED_NICS[@]})
+##   The FILE_ELEMENTS array describes the part of the file path that varies on a per file basis. 
+##   This can be set litterally, i.e. FILE_ELEMENTS=(eth2 eth3) or populated with the contents of 
+##   another variable coming from another function, i.e. FILE_ELEMENTS=(${DPDK_DEDICATED_NICS[@]})
+## FILE_PATH_PREFIX=/sys/class/net/
+##   File path prefix is the unchanging base path, i.e. FILE_PATH_PREFIX=/sys/class/net/
+## FILE_PATH_SUFFIX=/device/numa_node
+##   File path suffix is the unchanging path after the varying element, i.e. FILE_PATH_SUFFIX=/device/numa_node
+##
+##
+## Get the first NIC in the DPDK_DEDICATED_NICS array
+
+################
+### Remove after testing
+#for EACH in ${FILE_ELEMENTS[@]}; do TEST_FILE_ELEMENT=0; test $FIRST_FILE_TO_EVALUATE -eq $TEST_FILE_ELEMENT || { echo "NIC $EACH isn't on the same NUMA node as $FILE_ELEMENTS. All DPDK dedicated NICs must be on the same NUMA node for this script to work correctly. Aborting."; exit 1; } ; done
+################
+
+FIRST_FILE_TO_EVALUATE=`cat $FILE_PATH_PREFIX$DPDK_DEDICATED_NICS$FILE_PATH_SUFFIX`
+
+for EACH in ${FILE_ELEMENTS[@]}; do TEST_FILE_ELEMENT=`cat $FILE_PATH_PREFIX$EACH$FILE_PATH_SUFFIX`; test $FIRST_FILE_TO_EVALUATE -eq $TEST_FILE_ELEMENT || { echo "File $FILE_PATH_PREFIX$EACH$FILE_PATH_SUFFIX differs from file $FIRST_FILE_TO_EVALUATE. Aborting."; exit 1; } ; done
+################
+
+VALID_FILE_CONTENTS=$FIRST_FILE_TO_EVALUATE
+}
+
+################
+### Remove after testing
+DPDK_DEDICATED_NICS=(eth2 eth3)
+################
+FILE_ELEMENTS=(${DPDK_DEDICATED_NICS[@]})
+FILE_PATH_PREFIX=/sys/class/net/
+FILE_PATH_SUFFIX=/device/numa_node
+
+func_evaluate_contents_of_files 

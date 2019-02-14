@@ -1,0 +1,19 @@
+#!/bin/bash
+
+func_test_for_config_applied () {
+## Usage: Set global variables FILE_TO_TEST,  LINE_TO_TEST,  and array VALUES_TO_TEST before entering the function.
+## For example:
+## FILE_TO_TEST=/etc/default/grub
+## LINE_TO_TEST=^GRUB_CMDLINE_LINUX_DEFAULT
+## VALUES_TO_TEST=(intel_iommu iommu default_hugepagesz hugepagesz isolcpus)
+
+for EACH in ${VALUES_TO_TEST[@]} ; do  TEST_VALUE=`grep $LINE_TO_TEST $FILE_TO_TEST | grep -wo $EACH` ; test -z $TEST_VALUE || { echo "Value $TEST_VALUE has already been applied to the $FILE_TO_TEST file. Aborting"; exit 1; } ; done
+
+}
+
+FILE_TO_TEST=/etc/default/grub
+LINE_TO_TEST=^GRUB_CMDLINE_LINUX_DEFAULT
+VALUES_TO_TEST=(intel_iommu iommu default_hugepagesz hugepagesz isolcpus splash)
+
+func_test_for_config_applied 
+echo Configuration has not been applied yet.

@@ -1,0 +1,22 @@
+## Gather the logical CPUs to be dedicated to DPDK
+##
+#################
+### Remove this variable after testing is complete
+DPDK_DEDICATED_NICS=(eth2 eth3)
+#################
+## Find the NUMA node for the NICs and ensure they are the same
+
+## Get the first NIC in the DPDK_DEDICATED_NICS array
+FIRST_NIC_NUMA_NODE=`cat /sys/class/net/$DPDK_DEDICATED_NICS/device/numa_node`
+
+## Ensure all NICs are on the same NUMA nodes 
+################
+### Remove after testing
+#for EACH in ${DPDK_DEDICATED_NICS[@]}; do TEST_NIC_NUMA_NODE=0; test $FIRST_NIC_NUMA_NODE -eq $TEST_NIC_NUMA_NODE || { echo "NIC $EACH isn't on the same NUMA node as $DPDK_DEDICATED_NICS. All DPDK dedicated NICs must be on the same NUMA node for this script to work correctly. Aborting."; exit 1; } ; done
+
+for EACH in ${DPDK_DEDICATED_NICS[@]}; do TEST_NIC_NUMA_NODE=`cat /sys/class/net/$EACH/device/numa_node`; test $FIRST_NIC_NUMA_NODE -eq $TEST_NIC_NUMA_NODE || { echo "NIC $EACH isn't on the same NUMA node as $DPDK_DEDICATED_NICS. All DPDK dedicated NICs must be on the same NUMA node for this script to work correctly. Aborting."; exit 1; } ; done
+################
+
+NUMA_NODE=$FIRST_NIC_NUMA_NODE
+
+## Needed for VM testing as 
