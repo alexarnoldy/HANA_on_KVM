@@ -39,16 +39,22 @@ do
 	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM (Just press Enter to skip this NUMA node):"
 	read END
 	if [ -z ${END} ]; then END=0;fi
-	## BEGIN ## Iterate through the cores to find the hyper-thread siblings
+## BEGIN ## Iterate through the cores to find the hyper-thread siblings
 	cat /dev/null > /tmp/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
 	while [ $START -le $END ]; do  echo $START >> /tmp/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE; START=$(($START+1));done
 	cat /dev/null > /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE
 
 	for EACH in `cat /tmp/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE; done
 	cat /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE | sort -n | uniq > /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE
-	## END ## Iterate through the cores to find the hyper-thread siblings
-	## BEGIN ## Gather
-	echo -e "    How many CPU cores will be used for ${LBLUE}QEMU Emulator threads${NC}?"
+## END ## Iterate through the cores to find the hyper-thread siblings
+## BEGIN ## Gather cores for emulator threads
+	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC}?"
+	read EMULATOR_COUNT
+	if [ -z ${EMULATOR_COUNT} ]; then EMULATOR_COUNT=0;fi
+	cat /dev/null > /tmp/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
+	head -`echo $EMULATOR_COUNT` /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > /tmp/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
+	## Emulator threads unfinished
+## END ## Gather cores for emulator threads
 	let COUNTER=COUNTER+1
 	LINES=`wc -l /tmp/ALL_NUMA_NODES_WITH_CPU_CORES | awk '{print$1}'`
 done
@@ -109,8 +115,6 @@ EMULATOR_COUNT=2
 
 
 ## Establish list of logical CPUs for emulator threads from the beginning of the list of logical CPUs allocated to the VM
-cat /dev/null > /tmp/VM_CPU_CORES_EMULATOR
-head -`echo $EMULATOR_COUNT` /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ > /tmp/VM_CPU_CORES_EMULATOR
 #tr , '\n' < /tmp/VM_CPU_CORES_EMULATOR > /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
 
 ## Process the list of emulator threads, removing the trailing comma
