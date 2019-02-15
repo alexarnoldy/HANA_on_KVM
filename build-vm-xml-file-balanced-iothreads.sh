@@ -32,6 +32,7 @@ while [  $COUNTER -le $LINES ]
 do 
 	THIS_LINE=`head  -$COUNTER /tmp/ALL_NUMA_NODES_WITH_CPU_CORES | tail -1`
 	THIS_NUMA_NODE=`echo $THIS_LINE | awk '{print$1}'`
+## BEGIN ## Gather cores for the VM
 	echo "These are the CPUs on $THIS_LINE" 
 	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
 	read START
@@ -39,6 +40,7 @@ do
 	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM (Just press Enter to skip this NUMA node):"
 	read END
 	if [ -z ${END} ]; then END=0;fi
+## END ## Gather cores for the VM
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
 	cat /dev/null > /tmp/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
 	while [ $START -le $END ]; do  echo $START >> /tmp/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE; START=$(($START+1));done
@@ -60,9 +62,11 @@ do
 done
 
 
+################## Uncomment after testing ################
+exit
+################## Uncomment after testing ################
 
 ##echo -e "    Enter the ${LBLUE}FIRST${NC} CPU to be allocated to this VM:"
-################## Uncomment after testing ################
 ############## read START
 ################## Uncomment after testing ################
 ##echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:"
