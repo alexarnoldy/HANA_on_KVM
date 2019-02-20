@@ -5,15 +5,16 @@
 RED='\033[0;31m'
 LBLUE='\033[1;36m'
 NC='\033[0m'
+WORKING_DIR=/tmp/$$
+
+mkdir -p $WORKING_DIR
 
 echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
-################## Uncomment after testing ################
-############## read VM_NAME
-################## Uncomment after testing ################
+read VM_NAME
 echo ""
 echo ""
 echo -e "    Enter the absolute path name to place the output file:"
-##############read PATH_TO_OUTPUT_FILE
+read PATH_TO_OUTPUT_FILE
 FILE_LOCATION=$PATH_TO_OUTPUT_FILE/$VM_NAME.xml
 echo ""
 echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
@@ -26,12 +27,14 @@ echo ""
 ##echo ""
 
 ## New method to specify cores on a per NUMA node basis
-lscpu | grep ^"NUMA node"." " | awk -F, '{print$1}' | sed 's/A\ /A_/g' | sed 's/CPU(s)//' > /tmp/ALL_NUMA_NODES_WITH_CPU_CORES
+lscpu | grep ^"NUMA node"." " | awk -F, '{print$1}' | sed 's/A\ /A_/g' | sed 's/CPU(s)//' > $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES
 COUNTER=1
 while [  $COUNTER -le $LINES ]
 do 
-	THIS_LINE=`head  -$COUNTER /tmp/ALL_NUMA_NODES_WITH_CPU_CORES | tail -1`
+	THIS_LINE=`head  -$COUNTER $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES | tail -1`
+	echo $THIS_LINE
 	THIS_NUMA_NODE=`echo $THIS_LINE | awk '{print$1}'`
+	echo $THIS_NUMA_NODE
 ## BEGIN ## Gather cores for the VM
 	echo "These are the CPUs on $THIS_LINE" 
 	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
@@ -42,23 +45,23 @@ do
 	if [ -z ${END} ]; then END=0;fi
 ## END ## Gather cores for the VM
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
-	cat /dev/null > /tmp/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
-	while [ $START -le $END ]; do  echo $START >> /tmp/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE; START=$(($START+1));done
-	cat /dev/null > /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE
+	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
+	while [ $START -le $END ]; do  echo $START >> $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE; START=$(($START+1));done
+	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE
 
-	for EACH in `cat /tmp/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE; done
-	cat /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE | sort -n | uniq > /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE
+	for EACH in `cat $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE; done
+	cat $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE | sort -n | uniq > $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE
 ## END ## Iterate through the cores to find the hyper-thread siblings
 ## BEGIN ## Gather cores for emulator threads
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC}?"
 	read EMULATOR_COUNT
 	if [ -z ${EMULATOR_COUNT} ]; then EMULATOR_COUNT=0;fi
-	cat /dev/null > /tmp/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
-	head -`echo $EMULATOR_COUNT` /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > /tmp/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
+	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
+	head -`echo $EMULATOR_COUNT` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	## Emulator threads unfinished
 ## END ## Gather cores for emulator threads
 	let COUNTER=COUNTER+1
-	LINES=`wc -l /tmp/ALL_NUMA_NODES_WITH_CPU_CORES | awk '{print$1}'`
+	LINES=`wc -l $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES | awk '{print$1}'`
 done
 
 
@@ -76,7 +79,7 @@ exit
 
 echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in MiB to be alloacted to this VM:"
 ################## Uncomment after testing ################
-############## read MEMORY
+read MEMORY
 ################## Uncomment after testing ################
 
 
@@ -87,20 +90,20 @@ echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in MiB to be alloacted to t
 ## while [ $START -le $END ]; do  echo $START >> /tmp/VM_CPU_CORES_ITERATED; START=$(($START+1));done
 
 ##cat /dev/null > /tmp/VM_CPU_CORES_ITERATED_SIBLINGS
-$$for EACH in `cat /tmp/VM_CPU_CORES_ITERATED`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> /tmp/VM_CPU_CORES_ITERATED_SIBLINGS; done
+##for EACH in `cat /tmp/VM_CPU_CORES_ITERATED`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> /tmp/VM_CPU_CORES_ITERATED_SIBLINGS; done
 
 ##cat /tmp/VM_CPU_CORES_ITERATED_SIBLINGS | sort -n | uniq > /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ
 
 
 
-echo -e "    How many CPU cores will be used for ${LBLUE}QEMU Emulator threads${NC}?"
+##echo -e "    How many CPU cores will be used for ${LBLUE}QEMU Emulator threads${NC}?"
 
 ################## Uncomment after testing ################
 ############## read EMULATOR_COUNT
 ################## Uncomment after testing ################
 
 
-echo ""
+##echo ""
 
 echo -e "    How many CPU cores will be used for ${LBLUE}QEMU IOThreads${NC}?"
 
@@ -108,13 +111,13 @@ echo -e "    How many CPU cores will be used for ${LBLUE}QEMU IOThreads${NC}?"
 ############## read IOTHREAD_COUNT
 ################## Uncomment after testing ################
 ################## Remove after testing ################
-VM_NAME=test
-FILE_LOCATION=/tmp/test.xml
-START=1
-END=16
-MEMORY=2
-IOTHREAD_COUNT=2
-EMULATOR_COUNT=2
+##VM_NAME=test
+##FILE_LOCATION=/tmp/test.xml
+##START=1
+##END=16
+##MEMORY=2
+##IOTHREAD_COUNT=2
+##EMULATOR_COUNT=2
 ################## Remove after testing ################
 
 
