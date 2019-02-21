@@ -50,7 +50,7 @@ do
 	for EACH in `cat $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE; done
 	cat $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE | sort -n | uniq > $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE
 ## END ## Iterate through the cores to find the hyper-thread siblings
-## BEGIN ## Gather cores for emulator threads
+## BEGIN ## Establish cores for emulator threads
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC}?"
 	read EMULATOR_COUNT
 	if [ -z ${EMULATOR_COUNT} ]; then EMULATOR_COUNT=0;fi
@@ -58,16 +58,35 @@ do
 	head -`echo $EMULATOR_COUNT` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp
 	mv $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
-	## Emulator threads unfinished
-## END ## Gather cores for emulator threads
+## END ## Establish cores for emulator threads
+## BEGIN ## Establish cores for iothreads
+## Same as emulator but replace EMULATOR with IOTHREAD and change head statement
+	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC}?"
+	read IOTHREAD_COUNT
+	if [ -z ${IOTHREAD_COUNT} ]; then IOTHREAD_COUNT=0;fi
+	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_IOTHREAD_$THIS_NUMA_NODE
+	head -`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE | tail -`echo $IOTHREAD_COUNT` > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
+	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_IOTHREAD_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_IOTHREAD.tmp
+	mv $WORKING_DIR/VM_CPU_CORES_IOTHREAD.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREAD_$THIS_NUMA_NODE
+	## IOThreads are unfinished
+## END ## Establish cores for iothreads
+## BEGIN ## Establish reamining cores for the VM
+## END ## Establish reamining cores for the VM
 	let COUNTER=COUNTER+1
 	LINES=`wc -l $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES | awk '{print$1}'`
 done
 
+## Consolidate cores from each NUMA node into single list of cores to be used for QEMU emulator threads
 cat $WORKING_DIR/VM_CPU_CORES_EMULATOR_* > $WORKING_DIR/VM_CPU_CORES_EMULATOR
 VM_CPU_CORES_EMULATOR=`cat $WORKING_DIR/VM_CPU_CORES_EMULATOR`
 echo "${VM_CPU_CORES_EMULATOR::-1}" > $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp
 mv $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp $WORKING_DIR/VM_CPU_CORES_EMULATOR
+
+## Consolidate cores from each NUMA node into single list of cores to be used for QEMU IOThreads
+cat $WORKING_DIR/VM_CPU_CORES_IOTHREAD_* > $WORKING_DIR/VM_CPU_CORES_IOTHREAD
+VM_CPU_CORES_IOTHREAD=`cat $WORKING_DIR/VM_CPU_CORES_IOTHREAD`
+echo "${VM_CPU_CORES_IOTHREAD::-1}" > $WORKING_DIR/VM_CPU_CORES_IOTHREAD.tmp
+mv $WORKING_DIR/VM_CPU_CORES_IOTHREAD.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREAD
 
 ################## Uncomment after testing ################
 exit
