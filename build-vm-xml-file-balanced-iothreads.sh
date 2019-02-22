@@ -78,6 +78,9 @@ do
 	LINES=`wc -l $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES | awk '{print$1}'`
 done
 
+
+#### BEGIN #### Consolidate lists from all NUMA nodes 
+
 ## Consolidate cores from each NUMA node into single list of cores to be used for QEMU emulator threads
 cat $WORKING_DIR/VM_CPU_CORES_EMULATOR_* > $WORKING_DIR/VM_CPU_CORES_EMULATOR
 VM_CPU_CORES_EMULATOR=`cat $WORKING_DIR/VM_CPU_CORES_EMULATOR`
@@ -90,17 +93,21 @@ VM_CPU_CORES_IOTHREADS=`cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS`
 echo "${VM_CPU_CORES_IOTHREADS::-1}" > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
 mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS
 
-exit
 ## Consolidate cores from each NUMA node into single list of cores to be used for vCPUs
-## Need three outputs, a count of vCPUs, vCPUs+Siblings in a comma separated list, vCPUs+Siblings in a single column
+## Need three outputs: vCPUs+Siblings in a single column, vCPUs+Siblings in comma separated list, a count of vCPUs
+
+## vCPUs+Siblings in a single column
 cat $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_* > $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
-#echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > /tmp/VM_CPU_REMAINING_COMMA_SEPARATED
+
+## vCPUs+Siblings in a comma separated list
+VM_CPU_REMAINING_COMMA_SEPARATED=`tr '\n' , < $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS`
+echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > $WORKING_DIR/VM_CPU_REMAINING_COMMA_SEPARATED
 
 ## Count of vCPUs
 TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
+echo $TOTAL_VCPUS
 
-
-	VM_CPU_REMAINING_COMMA_SEPARATED=`tr '\n' , < $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE`
+#### END #### Consolidate lists from all NUMA nodes 
 
 
 
