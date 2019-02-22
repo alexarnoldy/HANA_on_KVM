@@ -68,6 +68,7 @@ do
 	head -`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE | tail -`echo $IOTHREAD_COUNT` > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
 	mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
+	tr , '\n' < $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE
 ## END ## Establish cores for iothreads
 ## BEGIN ## Establish reamining cores for the VM
 	tail -n +`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT + 1 ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE
@@ -92,6 +93,7 @@ cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS_* > $WORKING_DIR/VM_CPU_CORES_IOTHREADS
 VM_CPU_CORES_IOTHREADS=`cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS`
 echo "${VM_CPU_CORES_IOTHREADS::-1}" > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
 mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS
+cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS_* > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
 
 ## Consolidate cores from each NUMA node into single list of cores to be used for vCPUs
 ## Need three outputs: vCPUs+Siblings in a single column, vCPUs+Siblings in comma separated list, a count of vCPUs
@@ -111,24 +113,12 @@ echo $TOTAL_VCPUS
 
 
 
-################## Uncomment after testing ################
-exit
-################## Uncomment after testing ################
 
 
-echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in MiB to be alloacted to this VM:"
+echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be alloacted to this VM:"
 read MEMORY
 
 
-
-## Establish the remaining logical CPUs for the VM
-#tail -n +`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT + 1 ))` /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ > /tmp/VM_CPU_CORES_REMAINING
-#tr , '\n' < /tmp/VM_CPU_CORES_REMAINING > /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
-#TOTAL_VCPUS=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
-
-## Process the list of remaining CPUs, removing the trailing comma
-#VM_CPU_REMAINING_COMMA_SEPARATED=`tr '\n' , < /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS`
-#echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > /tmp/VM_CPU_REMAINING_COMMA_SEPARATED
 
 
 
@@ -160,43 +150,44 @@ xml ed --subnode "/domain/memoryBacking/hugepages" --type elem -n "page size='10
 ## Add vCPU pinning list to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 COUNTER=1 
-LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'` 
+LINES=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'` 
 while [  $COUNTER -le $LINES ] 
 do 
-	THIS_LINE=`head  -$COUNTER /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | tail -1`
+	THIS_LINE=`head  -$COUNTER $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | tail -1`
 	xml ed --subnode "/domain/cputune" --type elem -n "vcpupin vcpu='`echo $(( $COUNTER - 1 ))`' cpuset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
 	mv $FILE_LOCATION.tmp $FILE_LOCATION
 	let COUNTER=COUNTER+1
-	LINES=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
+	LINES=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
 done
+
 
 ## Add NUMA node pinning to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
-numactl --hardware | grep cpus | sed 's/node /node/' > /tmp/NUMA_NODES_TO_CPUS
-cat /dev/null > /tmp/ALL_NUMA_NODES
-for EACH in `cat /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS`
+numactl --hardware | grep cpus | sed 's/node /node/' > $WORKING_DIR/NUMA_NODES_TO_CPUS
+cat /dev/null > $WORKING_DIR/ALL_NUMA_NODES
+for EACH in `cat $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS`
 do 
-	grep -w $EACH /tmp/NUMA_NODES_TO_CPUS | awk -Fe '{print$2}' | awk '{print$1}' >> /tmp/ALL_NUMA_NODES
+	grep -w $EACH $WORKING_DIR/NUMA_NODES_TO_CPUS | awk -Fe '{print$2}' | awk '{print$1}' >> $WORKING_DIR/ALL_NUMA_NODES
 done
-sort /tmp/ALL_NUMA_NODES | uniq > /tmp/ALL_NUMA_NODES_UNIQ
+sort $WORKING_DIR/ALL_NUMA_NODES | uniq > $WORKING_DIR/ALL_NUMA_NODES_UNIQ
 
 ## Process the list of NUMA nodes, removing the trailing comma
-ALL_NUMA_NODES_UNIQ=`tr '\n' , < /tmp/ALL_NUMA_NODES_UNIQ`
-echo "${ALL_NUMA_NODES_UNIQ::-1}" > /tmp/ALL_NUMA_NODES_COMMA_SEPARATED
+ALL_NUMA_NODES_UNIQ=`tr '\n' , < $WORKING_DIR/ALL_NUMA_NODES_UNIQ`
+echo "${ALL_NUMA_NODES_UNIQ::-1}" > $WORKING_DIR/ALL_NUMA_NODES_COMMA_SEPARATED
 ## Set up the memory mode for all NUMA nodes
-xml ed --subnode "/domain/numatune" --type elem -n "memory mode='strict' nodeset='`cat /tmp/ALL_NUMA_NODES_COMMA_SEPARATED`'" $FILE_LOCATION > $FILE_LOCATION.tmp
+xml ed --subnode "/domain/numatune" --type elem -n "memory mode='strict' nodeset='`cat $WORKING_DIR/ALL_NUMA_NODES_COMMA_SEPARATED`'" $FILE_LOCATION > $FILE_LOCATION.tmp
 
 ## Add NUMA node pinning to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 COUNTER=1 
-LINES=`wc -l /tmp/ALL_NUMA_NODES_UNIQ | awk '{print$1}'` 
+LINES=`wc -l $WORKING_DIR/ALL_NUMA_NODES_UNIQ | awk '{print$1}'` 
 while [  $COUNTER -le $LINES ] 
 do 
-	THIS_LINE=`head  -$COUNTER /tmp/ALL_NUMA_NODES_UNIQ | tail -1`
+	THIS_LINE=`head  -$COUNTER $WORKING_DIR/ALL_NUMA_NODES_UNIQ | tail -1`
 	xml ed --subnode "/domain/numatune" --type elem -n "memnode cellid='`echo $(( $COUNTER - 1 ))`' mode='strict' nodeset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
 	mv $FILE_LOCATION.tmp $FILE_LOCATION
 	let COUNTER=COUNTER+1
-	LINES=`wc -l /tmp/ALL_NUMA_NODES_UNIQ | awk '{print$1}'`
+	LINES=`wc -l $WORKING_DIR/ALL_NUMA_NODES_UNIQ | awk '{print$1}'`
 done
 
 
@@ -208,24 +199,24 @@ xml ed -u "domain/clock/timer[@name='hpet' and @present='no']"/@present -v yes $
 
 ## Add emulatorpinning to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
-xml ed --subnode "/domain/cputune" --type elem -n "emulatorpin cpuset='`cat /tmp/VM_CPU_CORES_EMULATOR`'" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp
+xml ed --subnode "/domain/cputune" --type elem -n "emulatorpin cpuset='`cat $WORKING_DIR/VM_CPU_CORES_EMULATOR`'" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp
 
 ## Add total number of iothreads to the XML file
 ## virt-install and virt-xml don't seem to support iothreads
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
-xml ed --subnode "/domain" --type elem -n "iothreads" -v "`wc -l /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'`" $FILE_LOCATION > $FILE_LOCATION.tmp
+xml ed --subnode "/domain" --type elem -n "iothreads" -v "`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'`" $FILE_LOCATION > $FILE_LOCATION.tmp
 
 ## Add iothreadpinning list to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 COUNTER=1 
-LINES=`wc -l /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` 
+LINES=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` 
 while [  $COUNTER -le $LINES ] 
 do 
-	THIS_LINE=`head  -$COUNTER /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | tail -1`
+	THIS_LINE=`head  -$COUNTER $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | tail -1`
 	xml ed --subnode "/domain/cputune" --type elem -n "iothreadpin iothread='`echo $COUNTER`' cpuset='$THIS_LINE'" $FILE_LOCATION > $FILE_LOCATION.tmp
 	mv $FILE_LOCATION.tmp $FILE_LOCATION
 	let COUNTER=COUNTER+1
-	LINES=`wc -l /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'`
+	LINES=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'`
 done
 
 #### Begin virt-xml updates to the XML file
@@ -234,27 +225,18 @@ done
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 virt-xml --edit  --vcpu placement="static" < $FILE_LOCATION > $FILE_LOCATION.tmp
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
-virt-xml --edit  --vcpu cpuset="`cat /tmp/VM_CPU_REMAINING_COMMA_SEPARATED`" < $FILE_LOCATION > $FILE_LOCATION.tmp
+virt-xml --edit  --vcpu cpuset="`cat $WORKING_DIR/VM_CPU_REMAINING_COMMA_SEPARATED`" < $FILE_LOCATION > $FILE_LOCATION.tmp
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
-virt-xml --edit --vcpu=`wc -l /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
+virt-xml --edit --vcpu=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
 
 ## iothreads
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
-#virt-xml --add-device iothreads=`wc -l /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
-#virt-xml --edit --iothreads=`wc -l /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
+#virt-xml --add-device iothreads=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
+#virt-xml --edit --iothreads=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
 
 
 
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 cat $FILE_LOCATION
-rm /tmp/VM_CPU_CORES_ITERATED
-rm /tmp/VM_CPU_CORES_ITERATED_SIBLINGS 
-#rm /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ
-rm /tmp/VM_CPU_CORES_EMULATOR
-###rm /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
-rm /tmp/VM_CPU_CORES_IOTHREADS
-#rm /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
-#rm /tmp/VM_CPU_CORES_REMAINING
-#rm /tmp/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
 
 ####### virt-install --name test --memory 4096 --vcpu 2 --disk none --pxe --print-xml --dry-run --cputune vcpupin0.vcpu=0,vcpupin0.cpuset=2,vcpupin1.vcpu=1,vcpupin1.cpuset=8
