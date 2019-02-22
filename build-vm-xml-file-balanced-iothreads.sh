@@ -71,9 +71,8 @@ do
 ## END ## Establish cores for iothreads
 ## BEGIN ## Establish reamining cores for the VM
 	tail -n +`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT + 1 ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE
+	## This gets rid of all commas. Result is a single column of LCPUs
 	tr , '\n' < $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE
-	TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE | awk '{print$1}'`
-	VM_CPU_REMAINING_COMMA_SEPARATED=`tr '\n' , < $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE`
 ## END ## Establish reamining cores for the VM
 	let COUNTER=COUNTER+1
 	LINES=`wc -l $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES | awk '{print$1}'`
@@ -91,15 +90,17 @@ VM_CPU_CORES_IOTHREADS=`cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS`
 echo "${VM_CPU_CORES_IOTHREADS::-1}" > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
 mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS
 
-
+exit
 ## Consolidate cores from each NUMA node into single list of cores to be used for vCPUs
-cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS_* > $WORKING_DIR/VM_CPU_CORES_IOTHREADS
-VM_CPU_CORES_IOTHREADS=`cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS`
-echo "${VM_CPU_CORES_IOTHREADS::-1}" > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
-mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS
+## Need three outputs, a count of vCPUs, vCPUs+Siblings in a comma separated list, vCPUs+Siblings in a single column
+cat $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_* > $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
 #echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > /tmp/VM_CPU_REMAINING_COMMA_SEPARATED
 
+## Count of vCPUs
+TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
 
+
+	VM_CPU_REMAINING_COMMA_SEPARATED=`tr '\n' , < $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE`
 
 
 
@@ -107,77 +108,11 @@ mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS
 exit
 ################## Uncomment after testing ################
 
-##echo -e "    Enter the ${LBLUE}FIRST${NC} CPU to be allocated to this VM:"
-############## read START
-################## Uncomment after testing ################
-##echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:"
-################## Uncomment after testing ################
-############## read END
-################## Uncomment after testing ################
 
 echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in MiB to be alloacted to this VM:"
-################## Uncomment after testing ################
 read MEMORY
-################## Uncomment after testing ################
 
 
-
-## Iterate through the cores to find the hyper-thread siblings
-
-## cat /dev/null > /tmp/VM_CPU_CORES_ITERATED
-## while [ $START -le $END ]; do  echo $START >> /tmp/VM_CPU_CORES_ITERATED; START=$(($START+1));done
-
-##cat /dev/null > /tmp/VM_CPU_CORES_ITERATED_SIBLINGS
-##for EACH in `cat /tmp/VM_CPU_CORES_ITERATED`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> /tmp/VM_CPU_CORES_ITERATED_SIBLINGS; done
-
-##cat /tmp/VM_CPU_CORES_ITERATED_SIBLINGS | sort -n | uniq > /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ
-
-
-
-##echo -e "    How many CPU cores will be used for ${LBLUE}QEMU Emulator threads${NC}?"
-
-################## Uncomment after testing ################
-############## read EMULATOR_COUNT
-################## Uncomment after testing ################
-
-
-##echo ""
-
-#echo -e "    How many CPU cores will be used for ${LBLUE}QEMU IOThreads${NC}?"
-
-################## Uncomment after testing ################
-############## read IOTHREAD_COUNT
-################## Uncomment after testing ################
-################## Remove after testing ################
-##VM_NAME=test
-##FILE_LOCATION=/tmp/test.xml
-##START=1
-##END=16
-##MEMORY=2
-##IOTHREAD_COUNT=2
-##EMULATOR_COUNT=2
-################## Remove after testing ################
-
-
-## Establish list of logical CPUs for emulator threads from the beginning of the list of logical CPUs allocated to the VM
-#tr , '\n' < /tmp/VM_CPU_CORES_EMULATOR > /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
-
-## Process the list of emulator threads, removing the trailing comma
-#VM_CPU_CORES_EMULATOR=`tr '\n' , < /tmp/VM_CPU_CORES_EMULATOR `
-#echo "${VM_CPU_CORES_EMULATOR::-1}" > /tmp/VM_CPU_CORES_EMULATOR.tmp
-#mv /tmp/VM_CPU_CORES_EMULATOR.tmp /tmp/VM_CPU_CORES_EMULATOR
-
-#echo ""
-#cat /tmp/VM_CPU_CORES_EMULATOR_SORTED_BY_SIBLINGS
-#echo ""
-
-## Establish list of logical CPUs for iothreads
-#head -`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT ))` /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ | tail -`echo $IOTHREAD_COUNT` > /tmp/VM_CPU_CORES_IOTHREADS
-#tr , '\n' < /tmp/VM_CPU_CORES_IOTHREADS > /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
-
-#echo ""
-#cat /tmp/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
-#echo ""
 
 ## Establish the remaining logical CPUs for the VM
 #tail -n +`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT + 1 ))` /tmp/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ > /tmp/VM_CPU_CORES_REMAINING
