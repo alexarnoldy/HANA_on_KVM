@@ -121,7 +121,7 @@ echo $TOTAL_VCPUS
 
 
 
-echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be alloacted to this VM:"
+echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be allocated to this VM:"
 read MEMORY
 
 
