@@ -34,13 +34,9 @@ do
 	THIS_LINE=`head  -$COUNTER $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES | tail -1`
 	THIS_NUMA_NODE=`echo $THIS_LINE | awk '{print$1}'`
 ## BEGIN ## Gather cores for the VM
-	echo "These are the CPUs on $THIS_LINE" 
-	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
-	read START
-	if [ -z ${START} ]; then START=0;fi
-	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM (Just press Enter to skip this NUMA node):"
+	func_use_cores_from_this_NUMA_node () {
+	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:"
 	read END
-	if [ -z ${END} ]; then END=0;fi
 ## END ## Gather cores for the VM
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
@@ -51,30 +47,40 @@ do
 	cat $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE | sort -n | uniq > $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE
 ## END ## Iterate through the cores to find the hyper-thread siblings
 ## BEGIN ## Establish cores for emulator threads
-	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?"
-	read EMULATOR_COUNT
-	if [ -z ${EMULATOR_COUNT} ]; then EMULATOR_COUNT=0;fi
+	func_gather_cores_for_emulator_threads () {
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	head -`echo $EMULATOR_COUNT` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp
 	mv $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
+	}
+	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?"
+	read EMULATOR_COUNT
+	[ -n "$EMULATOR_COUNT" ] && func_gather_cores_for_emulator_threads
 ## END ## Establish cores for emulator threads
 ## BEGIN ## Establish cores for iothreads
-## Same as emulator but replace EMULATOR with IOTHREAD and change head statement
-	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC} (Just press Enter to skip this NUMA node)?"
-	read IOTHREAD_COUNT
-	if [ -z ${IOTHREAD_COUNT} ]; then IOTHREAD_COUNT=0;fi
+	## Same as emulator but replace EMULATOR with IOTHREAD and change head statement
+	func_gather_cores_for_iothreads () {
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	head -`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE | tail -`echo $IOTHREAD_COUNT` > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
 	mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	tr , '\n' < $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE
+	}
+	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC} (Just press Enter to skip this NUMA node)?"
+	read IOTHREAD_COUNT
+	[ -n "$IOTHREAD_COUNT" ] && func_gather_cores_for_iothreads
 ## END ## Establish cores for iothreads
 ## BEGIN ## Establish reamining cores for the VM
 	tail -n +`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT + 1 ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE
 	## This gets rid of all commas. Result is a single column of LCPUs
 	tr , '\n' < $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE
 ## END ## Establish reamining cores for the VM
+	}
+	echo "These are the CPUs on $THIS_LINE" 
+	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
+	read START
+	## If the value of $START is non-null, run the above function to gather CPU info for this NUMA node
+	[ -n "$START" ] && func_use_cores_from_this_NUMA_node
 	let COUNTER=COUNTER+1
 	LINES=`wc -l $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES | awk '{print$1}'`
 done
