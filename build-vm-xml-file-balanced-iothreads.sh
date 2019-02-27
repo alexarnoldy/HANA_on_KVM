@@ -1,10 +1,22 @@
 #!/bin/bash
 
-##### NEED TO TEST FOR XMLLINT AND XMLSTARLET (AKA XML)
+##### NEED TO TEST FOR XMLSTARLET (AKA XML), VIRT-INSTALL AND VIRT-XML 
 ## Script to create VM XML file, including vCPU, emulator, IOThread and NUMA node pinnings
+
+##### Uncomment and set the below variables to bypass the input phase of the script
+# VM_NAME=test
+# PATH_TO_OUTPUT_FILE=/tmp
+# WORKING_DIR=/tmp/my-custom-config.d
+#### Files required to be in the working directory are:
+####	VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
+####	ALL_NUMA_NODES_UNIQ
+####	ALL_NUMA_NODES_COMMA_SEPARATED
+####	
 RED='\033[0;31m'
 LBLUE='\033[1;36m'
 NC='\033[0m'
+
+
 WORKING_DIR=/tmp/$$
 
 mkdir -p $WORKING_DIR
@@ -21,10 +33,6 @@ echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
 echo ""
 echo ""
 
-####**** Gather the CPU cores to used 
-##echo "The CPU cores on this system are:"
-##lscpu | grep ^"NUMA node"." " | awk -F, '{print$1}'
-##echo ""
 
 ## New method to specify cores on a per NUMA node basis
 lscpu | grep ^"NUMA node"." " | awk -F, '{print$1}' | sed 's/A\ /A_/g' | sed 's/CPU(s)//' > $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES
@@ -111,21 +119,17 @@ cat $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_* > $WORKING_DIR/VM_C
 VM_CPU_REMAINING_COMMA_SEPARATED=`tr '\n' , < $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS`
 echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > $WORKING_DIR/VM_CPU_REMAINING_COMMA_SEPARATED
 
-## Count of vCPUs
-TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
-echo $TOTAL_VCPUS
 
 #### END #### Consolidate lists from all NUMA nodes 
 
 
-
+## Count of vCPUs
+TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
+echo $TOTAL_VCPUS
 
 
 echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be allocated to this VM:"
 read MEMORY
-
-
-
 
 
 ####
