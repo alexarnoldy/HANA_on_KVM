@@ -3,7 +3,7 @@
 ##### NEED TO TEST FOR XMLSTARLET (AKA XML), VIRT-INSTALL AND VIRT-XML 
 ## Script to create VM XML file, including vCPU, emulator, IOThread and NUMA node pinnings
 
-##### Uncomment and set the below variables to bypass the input phase of the script
+##### Uncomment and set the following three variables to bypass the input phase of the script
 # VM_NAME=test
 # PATH_TO_OUTPUT_FILE=/tmp
 # WORKING_DIR=/tmp/my-custom-config.d
@@ -11,7 +11,10 @@
 ####	VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
 ####	ALL_NUMA_NODES_UNIQ
 ####	ALL_NUMA_NODES_COMMA_SEPARATED
-####	
+####	VM_CPU_CORES_EMULATOR
+####	VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
+####	VM_CPU_REMAINING_COMMA_SEPARATED
+
 RED='\033[0;31m'
 LBLUE='\033[1;36m'
 NC='\033[0m'
