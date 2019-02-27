@@ -20,6 +20,7 @@ LBLUE='\033[1;36m'
 NC='\033[0m'
 
 
+func_gather_and_process_input () {
 WORKING_DIR=/tmp/$$
 
 mkdir -p $WORKING_DIR
@@ -122,18 +123,20 @@ cat $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_* > $WORKING_DIR/VM_C
 VM_CPU_REMAINING_COMMA_SEPARATED=`tr '\n' , < $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS`
 echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > $WORKING_DIR/VM_CPU_REMAINING_COMMA_SEPARATED
 
-
 #### END #### Consolidate lists from all NUMA nodes 
 
-
-## Count of vCPUs
-TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
-echo $TOTAL_VCPUS
 
 
 echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be allocated to this VM:"
 read MEMORY
+}
 
+
+[ -z "$WORKING_DIR" ] && func_gather_and_process_input
+
+## Count of vCPUs
+TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
+echo $TOTAL_VCPUS
 
 ####
 ## Beginning of creating the XML file
