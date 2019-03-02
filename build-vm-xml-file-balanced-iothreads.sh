@@ -4,9 +4,9 @@
 ## Script to create VM XML file, including vCPU, emulator, IOThread and NUMA node pinnings
 
 ##### Uncomment and set the following three variables to bypass the input phase of the script
-# VM_NAME=test
-# PATH_TO_OUTPUT_FILE=/tmp
-# WORKING_DIR=/tmp/my-custom-config.d
+#VM_NAME=test
+#MEMORY=4
+#WORKING_DIR=/tmp/my-test-dir
 #### Files required to be in the working directory are:
 ####	VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
 ####	ALL_NUMA_NODES_UNIQ
@@ -27,11 +27,12 @@ mkdir -p $WORKING_DIR
 
 echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
 read VM_NAME
+echo $VM_NAME > $WORKING_DIR/VM_NAME.var
 echo ""
 echo ""
-echo -e "    Enter the absolute path name to place the output file:"
-read PATH_TO_OUTPUT_FILE
-FILE_LOCATION=$PATH_TO_OUTPUT_FILE/$VM_NAME.xml
+#echo -e "    Enter the absolute path name to place the output file:"
+#read PATH_TO_OUTPUT_FILE
+FILE_LOCATION=$WORKING_DIR/$VM_NAME.xml
 echo ""
 echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
 echo ""
@@ -49,6 +50,7 @@ do
 	func_use_cores_from_this_NUMA_node () {
 	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:"
 	read END
+	echo $END > $WORKING_DIR/END_$THIS_NUMA_NODE.var
 ## END ## Gather cores for the VM
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
@@ -67,6 +69,7 @@ do
 	}
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?"
 	read EMULATOR_COUNT
+	echo $EMULATOR_COUNT > $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$EMULATOR_COUNT" ] && func_gather_cores_for_emulator_threads
 ## END ## Establish cores for emulator threads
 ## BEGIN ## Establish cores for iothreads
@@ -80,6 +83,7 @@ do
 	}
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC} (Just press Enter to skip this NUMA node)?"
 	read IOTHREAD_COUNT
+	echo $IOTHREAD_COUNT > $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$IOTHREAD_COUNT" ] && func_gather_cores_for_iothreads
 ## END ## Establish cores for iothreads
 ## BEGIN ## Establish reamining cores for the VM
@@ -91,6 +95,7 @@ do
 	echo "These are the CPUs on $THIS_LINE" 
 	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
 	read START
+	echo $START > $WORKING_DIR/START_$THIS_NUMA_NODE.var
 	## If the value of $START is non-null, run the above function to gather CPU info for this NUMA node
 	[ -n "$START" ] && func_use_cores_from_this_NUMA_node
 	let COUNTER=COUNTER+1
@@ -129,10 +134,12 @@ echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > $WORKING_DIR/VM_CPU_REMAINING_C
 
 echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be allocated to this VM:"
 read MEMORY
+echo $MEMORY > $WORKING_DIR/MEMORY.var
 }
 
 
-[ -z "$WORKING_DIR" ] && func_gather_and_process_input
+[ -z "$1" ] && func_gather_and_process_input
+#[ -z "$WORKING_DIR" ] && func_gather_and_process_input
 
 ## Count of vCPUs
 TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
@@ -141,6 +148,7 @@ echo $TOTAL_VCPUS
 ####
 ## Beginning of creating the XML file
 ####
+FILE_LOCATION=$WORKING_DIR/$VM_NAME.xml
 virt-install --name $VM_NAME --memory $MEMORY --vcpu $TOTAL_VCPUS --disk none --pxe --print-xml 2 --dry-run > $FILE_LOCATION
 
 #### Begin xml (xmlstarlet) updates to the base file created by virt-install
