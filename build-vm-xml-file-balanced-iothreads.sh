@@ -14,7 +14,8 @@ NC='\033[0m'
 ##### If not-null, will use values from the files in the named (and existing) directory.
 ##### DONE: Create the .var files from the gathered input (on a null run)
 ##### DONE: Set the variables from the .var files.
-##### TODO: Separate the input loop from the file generating loop.
+##### TODO: Separate the input loop from the file generating loop. Step one will be to dupliate the functions, comment out the appropriate sections of each and remove the function
+##### TODO: One way might be to test for $1 before each input and variable gather step
 WORKING_DIR=`echo $1`
 
 func_gather_and_process_input () {
@@ -22,8 +23,11 @@ WORKING_DIR=/tmp/$$
 
 mkdir -p $WORKING_DIR
 
-echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
-read VM_NAME
+## New attempt to test for command line option and gather input if there isn't one
+[ -z "$WORKING_DIR" ] && echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:" && read VM_NAME
+## Old way of gathering info
+#echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
+#read VM_NAME
 	## Need to populate the file below for future non-interactive runs. 
 echo $VM_NAME > $WORKING_DIR/VM_NAME.var
 echo ""
@@ -118,7 +122,7 @@ do
 done
 
 
-#### BEGIN #### Consolidate lists from all NUMA nodes 
+#### BEGIN #### Consolidate lists from all NUMA nodes for null and non-null runs
 
 ## Consolidate cores from each NUMA node into single list of cores to be used for QEMU emulator threads
 cat $WORKING_DIR/VM_CPU_CORES_EMULATOR_* > $WORKING_DIR/VM_CPU_CORES_EMULATOR
@@ -143,7 +147,7 @@ cat $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_* > $WORKING_DIR/VM_C
 VM_CPU_REMAINING_COMMA_SEPARATED=`tr '\n' , < $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS`
 echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > $WORKING_DIR/VM_CPU_REMAINING_COMMA_SEPARATED
 
-#### END #### Consolidate lists from all NUMA nodes 
+#### END #### Consolidate lists from all NUMA nodes for null and non-null runs
 
 
 
@@ -160,7 +164,7 @@ echo $MEMORY > $WORKING_DIR/MEMORY.var
 ## Set VM_NAME in both null and non-null runs
 VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
 
-## Count of vCPUs
+## Set count of vCPUs in both null and non-null runs
 TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
 echo $TOTAL_VCPUS
 
