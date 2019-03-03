@@ -201,10 +201,15 @@ echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > $WORKING_DIR/VM_CPU_REMAINING_C
 
 
 
-echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be allocated to this VM:"
-read MEMORY
-	## Need to populate the file below for future non-interactive runs. 
-echo $MEMORY > $WORKING_DIR/MEMORY.var
+if [ -z "$NONINTERACTIVE" ]
+then
+	MEMORY=`cat $WORKING_DIR/MEMORY.var`
+else
+	echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be allocated to this VM:"
+	read MEMORY
+	echo $MEMORY > $WORKING_DIR/MEMORY.var
+fi
+
 }
 ## END ## Function to gather and process core information from this NUMA node only if the START value is populated
 
@@ -220,7 +225,7 @@ func_gather_and_process_input
 
 ## Set count of vCPUs in both null and non-null runs
 TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
-echo $TOTAL_VCPUS
+#echo $TOTAL_VCPUS
 
 ####
 ## Beginning of creating the XML file
@@ -338,6 +343,6 @@ mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 
 
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
-cat $FILE_LOCATION
+#cat $FILE_LOCATION
 
 ####### virt-install --name test --memory 4096 --vcpu 2 --disk none --pxe --print-xml --dry-run --cputune vcpupin0.vcpu=0,vcpupin0.cpuset=2,vcpupin1.vcpu=1,vcpupin1.cpuset=8
