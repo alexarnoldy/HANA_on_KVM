@@ -61,6 +61,8 @@ do
 	echo $END > $WORKING_DIR/END_$THIS_NUMA_NODE.var
 ## END ## Gather cores for the VM
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
+	START=`cat $WORKING_DIR/START_$THIS_NUMA_NODE.var`
+	END=`cat $WORKING_DIR/END_$THIS_NUMA_NODE.var`
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
 	while [ $START -le $END ]; do  echo $START >> $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE; START=$(($START+1));done
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE
@@ -68,15 +70,19 @@ do
 	for EACH in `cat $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE; done
 	cat $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE | sort -n | uniq > $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE
 ## END ## Iterate through the cores to find the hyper-thread siblings
-## BEGIN ## Establish cores for emulator threads
+## BEGIN ## Iterate through emulator threads
 	func_gather_cores_for_emulator_threads () {
+	EMULATOR_COUNT=`cat $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var`
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	head -`echo $EMULATOR_COUNT` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp
 	mv $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	}
+## END ## Iterate through emulator threads
+## BEGIN ## Gather cores for emulator threads
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?"
 	read EMULATOR_COUNT
+## END ## Gather cores for emulator threads
 	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
 	echo $EMULATOR_COUNT > $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$EMULATOR_COUNT" ] && func_gather_cores_for_emulator_threads
@@ -149,8 +155,11 @@ read MEMORY
 echo $MEMORY > $WORKING_DIR/MEMORY.var
 }
 
-
+##### Test to run the input gathering function only if there is no command line option provided
 [ -z "$WORKING_DIR" ] && func_gather_and_process_input
+
+## Set VM_NAME in both null and non-null runs
+VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
 
 ## Count of vCPUs
 TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
