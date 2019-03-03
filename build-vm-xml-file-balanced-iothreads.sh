@@ -53,6 +53,7 @@ while [  $COUNTER -le $LINES ]
 do 
 	THIS_LINE=`head  -$COUNTER $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES | tail -1`
 	THIS_NUMA_NODE=`echo $THIS_LINE | awk '{print$1}'`
+## BEGIN ## Function to gather and process core information from this NUMA node only if the START value is populated
 ## BEGIN ## Gather cores for the VM
 	func_use_cores_from_this_NUMA_node () {
 	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:"
@@ -70,7 +71,7 @@ do
 	for EACH in `cat $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE`; do cat /sys/devices/system/cpu/cpu$EACH/topology/thread_siblings_list >> $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE; done
 	cat $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE | sort -n | uniq > $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE
 ## END ## Iterate through the cores to find the hyper-thread siblings
-## BEGIN ## Iterate through emulator threads
+## BEGIN ## Function to iterate through emulator threads
 	func_gather_cores_for_emulator_threads () {
 	EMULATOR_COUNT=`cat $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var`
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
@@ -78,30 +79,36 @@ do
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp
 	mv $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	}
-## END ## Iterate through emulator threads
+## END ## Function to iterate through emulator threads
 ## BEGIN ## Gather cores for emulator threads
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?"
 	read EMULATOR_COUNT
 ## END ## Gather cores for emulator threads
+## BEGIN ## Call function to iterate through emulator threads for null run
 	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
 	echo $EMULATOR_COUNT > $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$EMULATOR_COUNT" ] && func_gather_cores_for_emulator_threads
-## END ## Establish cores for emulator threads
-## BEGIN ## Establish cores for iothreads
-	## Same as emulator but replace EMULATOR with IOTHREAD and change head statement
+## END ## Call function to iterate through emulator threads for null run
+## BEGIN ## Function to iterate through iothreads
+	## Very similar to emulator but replace EMULATOR with IOTHREAD and change head statement
 	func_gather_cores_for_iothreads () {
+	IOTHREAD_COUNT=`cat $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var`
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	head -`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE | tail -`echo $IOTHREAD_COUNT` > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
 	mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	tr , '\n' < $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE
 	}
+## END ## Function to iterate through iothreads
+## BEGIN ## Gather cores for iothreads
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC} (Just press Enter to skip this NUMA node)?"
 	read IOTHREAD_COUNT
+## END ## Gather cores for iothreads
+## BEGIN ## Call function to iterate through iothreads for null run
 	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
 	echo $IOTHREAD_COUNT > $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$IOTHREAD_COUNT" ] && func_gather_cores_for_iothreads
-## END ## Establish cores for iothreads
+## END ## Call function to iterate through iothreads for null run
 ## BEGIN ## Establish reamining cores for the VM
 	tail -n +`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT + 1 ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE
 	## This gets rid of all commas. Result is a single column of LCPUs
@@ -154,8 +161,9 @@ read MEMORY
 	## Need to populate the file below for future non-interactive runs. 
 echo $MEMORY > $WORKING_DIR/MEMORY.var
 }
+## END ## Function to gather and process core information from this NUMA node only if the START value is populated
 
-##### Test to run the input gathering function only if there is no command line option provided
+##### Test to run the input gathering (and currently processing as well) function only if there is no command line option provided (i.e. null run)
 [ -z "$WORKING_DIR" ] && func_gather_and_process_input
 
 ## Set VM_NAME in both null and non-null runs
