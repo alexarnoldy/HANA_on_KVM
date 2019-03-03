@@ -31,7 +31,7 @@ mkdir -p $WORKING_DIR
 #echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
 #read VM_NAME
 ## New attempt to test for command line option and gather input if there isn't one. Commend out here and moved into the -z test above
-	## Need to populate the file below for future non-interactive runs. 
+##	## Need to populate the file below for future non-interactive runs. 
 #echo $VM_NAME > $WORKING_DIR/VM_NAME.var
 echo ""
 echo ""
@@ -54,14 +54,12 @@ do
 ## BEGIN ## Gather cores for the VM
 	## Note that this function will be bypassed if there is not the START variable is not populated
 	func_use_cores_from_this_NUMA_node () {
-	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:"
-	read END
-	## Need to populate the file below for future non-interactive runs. 
-	echo $END > $WORKING_DIR/END_$THIS_NUMA_NODE.var
+	## New attempt to test for command line option and gather input if there isn't one (i.e. the variable "iz" null)
+	[ -z "$WORKING_DIR" ] && echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:" && read END && echo $END > $WORKING_DIR/END_$THIS_NUMA_NODE.var
+	## New attempt to test for command line option and set the variable name if there is one (i.e. the variable is non-null)
+	[ -n "$WORKING_DIR" ]  && END=`cat $WORKING_DIR/END_$THIS_NUMA_NODE.var`
 ## END ## Gather cores for the VM
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
-	START=`cat $WORKING_DIR/START_$THIS_NUMA_NODE.var`
-	END=`cat $WORKING_DIR/END_$THIS_NUMA_NODE.var`
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
 	while [ $START -le $END ]; do  echo $START >> $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE; START=$(($START+1));done
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_$THIS_NUMA_NODE
@@ -71,7 +69,6 @@ do
 ## END ## Iterate through the cores to find the hyper-thread siblings
 ## BEGIN ## Function to iterate through emulator threads
 	func_gather_cores_for_emulator_threads () {
-	EMULATOR_COUNT=`cat $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var`
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	head -`echo $EMULATOR_COUNT` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_EMULATOR_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp
@@ -79,18 +76,17 @@ do
 	}
 ## END ## Function to iterate through emulator threads
 ## BEGIN ## Gather cores for emulator threads
-	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?"
-	read EMULATOR_COUNT
+	## New attempt to test for command line option and gather input if there isn't one (i.e. the variable "iz" null)
+	[ -z "$WORKING_DIR" ] && echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?" && read EMULATOR_COUNT && echo $EMULATOR_COUNT > $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var
+	## New attempt to test for command line option and set the variable name if there is one (i.e. the variable is non-null)
+	[ -n "$WORKING_DIR" ] && EMULATOR_COUNT=`cat $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var`
 ## END ## Gather cores for emulator threads
 ## BEGIN ## Call function to iterate through emulator threads for null run
-	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
-	echo $EMULATOR_COUNT > $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$EMULATOR_COUNT" ] && func_gather_cores_for_emulator_threads
 ## END ## Call function to iterate through emulator threads for null run
 ## BEGIN ## Function to iterate through iothreads
 	## Very similar to emulator but replace EMULATOR with IOTHREAD and change head statement
 	func_gather_cores_for_iothreads () {
-	IOTHREAD_COUNT=`cat $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var`
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	head -`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE | tail -`echo $IOTHREAD_COUNT` > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE
 	tr '\n' , < $WORKING_DIR/VM_CPU_CORES_IOTHREADS_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
@@ -99,12 +95,13 @@ do
 	}
 ## END ## Function to iterate through iothreads
 ## BEGIN ## Gather cores for iothreads
-	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC} (Just press Enter to skip this NUMA node)?"
-	read IOTHREAD_COUNT
+	## New attempt to test for command line option and gather input if there isn't one (i.e. the variable "iz" null)
+	[ -z "$WORKING_DIR" ] && echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC} (Just press Enter to skip this NUMA node)?" && read IOTHREAD_COUNT && echo $IOTHREAD_COUNT > $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var
+	## New attempt to test for command line option and set the variable name if there is one (i.e. the variable is non-null)
+	[ -n "$WORKING_DIR" ] &&  IOTHREAD_COUNT=`cat $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var`
 ## END ## Gather cores for iothreads
 ## BEGIN ## Call function to iterate through iothreads for null run
 	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
-	echo $IOTHREAD_COUNT > $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$IOTHREAD_COUNT" ] && func_gather_cores_for_iothreads
 ## END ## Call function to iterate through iothreads for null run
 ## BEGIN ## Process reamining cores for the VM
@@ -114,12 +111,10 @@ do
 ## END ## Process reamining cores for the VM
 	}
 	## Note that the START variable must be populated for a NUMA node to enter the func_use_cores_from_this_NUMA_node function, both in null and non-null runs
-	echo "These are the CPUs on $THIS_LINE" 
-	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
-	## Note that the START variable is later populated with the .var file (coming from this variable in a null run) along with the END variable at the top of the func_use_cores_from_this_NUMA_node function. This ensures the variables get set in null and non-null runs
-	read START
-	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
-	echo $START > $WORKING_DIR/START_$THIS_NUMA_NODE.var
+	## New attempt to test for command line option and gather input if there isn't one (i.e. the variable "iz" null)
+	[ -z "$WORKING_DIR" ] && echo "These are the CPUs on $THIS_LINE" && echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" &&  read START && echo $START > $WORKING_DIR/START_$THIS_NUMA_NODE.var
+	## New attempt to test for command line option and set the variable name if there is one (i.e. the variable is non-null)
+	[ -n "$WORKING_DIR" ] &&  START=`cat $WORKING_DIR/START_$THIS_NUMA_NODE.var`
 	## If the value of $START is non-null, run the above function to gather CPU info for this NUMA node
 	[ -n "$START" ] && func_use_cores_from_this_NUMA_node
 	let COUNTER=COUNTER+1
