@@ -19,6 +19,13 @@ RED='\033[0;31m'
 LBLUE='\033[1;36m'
 NC='\033[0m'
 
+##### Set the WORKING_DIR as the single command line option, which is the fully qualified pathname of a directory. 
+##### Then will test to see if it is null (around line 150). 
+##### If null, run func_gather_and_process_input (), which will reset WORKING_DIR to a directory named after the PID of the script. 
+##### If not-null, will use values from the files in the named (and existing) directory.
+##### DONE: Create the .var files from the gathered input (on a null run)
+##### TODO: 1) Set the variables from the .var files. 2) Separate the input loop from the file generating loop.
+WORKING_DIR=`echo $1`
 
 func_gather_and_process_input () {
 WORKING_DIR=/tmp/$$
@@ -27,6 +34,7 @@ mkdir -p $WORKING_DIR
 
 echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
 read VM_NAME
+	## Need to populate the file below for future non-interactive runs. 
 echo $VM_NAME > $WORKING_DIR/VM_NAME.var
 echo ""
 echo ""
@@ -37,7 +45,6 @@ echo ""
 echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
 echo ""
 echo ""
-
 
 ## New method to specify cores on a per NUMA node basis
 lscpu | grep ^"NUMA node"." " | awk -F, '{print$1}' | sed 's/A\ /A_/g' | sed 's/CPU(s)//' > $WORKING_DIR/ALL_NUMA_NODES_WITH_CPU_CORES
@@ -50,6 +57,7 @@ do
 	func_use_cores_from_this_NUMA_node () {
 	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:"
 	read END
+	## Need to populate the file below for future non-interactive runs. 
 	echo $END > $WORKING_DIR/END_$THIS_NUMA_NODE.var
 ## END ## Gather cores for the VM
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
@@ -69,6 +77,7 @@ do
 	}
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?"
 	read EMULATOR_COUNT
+	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
 	echo $EMULATOR_COUNT > $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$EMULATOR_COUNT" ] && func_gather_cores_for_emulator_threads
 ## END ## Establish cores for emulator threads
@@ -83,6 +92,7 @@ do
 	}
 	echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC} (Just press Enter to skip this NUMA node)?"
 	read IOTHREAD_COUNT
+	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
 	echo $IOTHREAD_COUNT > $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$IOTHREAD_COUNT" ] && func_gather_cores_for_iothreads
 ## END ## Establish cores for iothreads
@@ -95,6 +105,7 @@ do
 	echo "These are the CPUs on $THIS_LINE" 
 	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
 	read START
+	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
 	echo $START > $WORKING_DIR/START_$THIS_NUMA_NODE.var
 	## If the value of $START is non-null, run the above function to gather CPU info for this NUMA node
 	[ -n "$START" ] && func_use_cores_from_this_NUMA_node
@@ -134,12 +145,12 @@ echo "${VM_CPU_REMAINING_COMMA_SEPARATED::-1}" > $WORKING_DIR/VM_CPU_REMAINING_C
 
 echo -e "    Enter the amount of ${LBLUE}MEMORY${NC} in GiB to be allocated to this VM:"
 read MEMORY
+	## Need to populate the file below for future non-interactive runs. 
 echo $MEMORY > $WORKING_DIR/MEMORY.var
 }
 
 
-[ -z "$1" ] && func_gather_and_process_input
-#[ -z "$WORKING_DIR" ] && func_gather_and_process_input
+[ -z "$WORKING_DIR" ] && func_gather_and_process_input
 
 ## Count of vCPUs
 TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
