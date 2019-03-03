@@ -3,7 +3,15 @@
 ##### NEED TO TEST FOR XMLSTARLET (AKA XML), VIRT-INSTALL AND VIRT-XML 
 ## Script to create VM XML file, including vCPU, emulator, IOThread and NUMA node pinnings
 
+if [ -z "$1" ]
+then
+      NONINTERACTIVE=true
+else
+      unset NONINTERACTIVE
+fi
+echo $NONINTERACTIVE
 
+WORKING_DIR=`echo $1` 
 RED='\033[0;31m'
 LBLUE='\033[1;36m'
 NC='\033[0m'
@@ -16,17 +24,26 @@ NC='\033[0m'
 ##### DONE: Set the variables from the .var files.
 ##### TODO: Separate the input loop from the file generating loop. Step one will be to dupliate the functions, comment out the appropriate sections of each and remove the function
 ##### TODO: One way might be to test for $1 before each input and variable gather step
-WORKING_DIR=`echo $1`
 
 func_gather_and_process_input () {
-WORKING_DIR=/tmp/$$
-
-mkdir -p $WORKING_DIR
 
 ## New attempt to test for command line option and gather input if there isn't one
-[ -z "$WORKING_DIR" ] && echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:" && read VM_NAME && echo $VM_NAME > $WORKING_DIR/VM_NAME.var
+#[ -z "$WORKING_DIR" ] && echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:" && read VM_NAME && echo $VM_NAME > $WORKING_DIR/VM_NAME.var
+#[ -z "$1" ] && echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:" && read VM_NAME && WORKING_DIR=/tmp/$$ && mkdir -p $WORKING_DIR && echo $VM_NAME > $WORKING_DIR/VM_NAME.var
+if [ -z "$NONINTERACTIVE" ]
+then
+	echo $1
+	VM_NAME=`cat $WORKING_DIR/VM_NAME.var` 
+else
+	echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
+	read VM_NAME 
+	WORKING_DIR=/tmp/$$ 
+	mkdir -p $WORKING_DIR 
+	echo $VM_NAME > $WORKING_DIR/VM_NAME.var
+fi
 ## New attempt to test for command line option and set the variable name if there is one
-[ -n "$WORKING_DIR" ] && VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
+#[ -n "$WORKING_DIR" ] && VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
+#[ !-z "$1" ] && echo $1 &&  WORKING_DIR=`echo $1` && VM_NAME=`cat $WORKING_DIR/VM_NAME.var` 
 ## Old way of gathering info
 #echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
 #read VM_NAME
