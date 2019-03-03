@@ -3,17 +3,6 @@
 ##### NEED TO TEST FOR XMLSTARLET (AKA XML), VIRT-INSTALL AND VIRT-XML 
 ## Script to create VM XML file, including vCPU, emulator, IOThread and NUMA node pinnings
 
-##### Uncomment and set the following three variables to bypass the input phase of the script
-#VM_NAME=test
-#MEMORY=4
-#WORKING_DIR=/tmp/my-test-dir
-#### Files required to be in the working directory are:
-####	VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS
-####	ALL_NUMA_NODES_UNIQ
-####	ALL_NUMA_NODES_COMMA_SEPARATED
-####	VM_CPU_CORES_EMULATOR
-####	VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
-####	VM_CPU_REMAINING_COMMA_SEPARATED
 
 RED='\033[0;31m'
 LBLUE='\033[1;36m'
@@ -24,7 +13,8 @@ NC='\033[0m'
 ##### If null, run func_gather_and_process_input (), which will reset WORKING_DIR to a directory named after the PID of the script. 
 ##### If not-null, will use values from the files in the named (and existing) directory.
 ##### DONE: Create the .var files from the gathered input (on a null run)
-##### TODO: 1) Set the variables from the .var files. 2) Separate the input loop from the file generating loop.
+##### DONE: Set the variables from the .var files.
+##### TODO: Separate the input loop from the file generating loop.
 WORKING_DIR=`echo $1`
 
 func_gather_and_process_input () {
