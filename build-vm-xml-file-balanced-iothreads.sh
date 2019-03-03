@@ -109,14 +109,15 @@ do
 	echo $IOTHREAD_COUNT > $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var
 	[ -n "$IOTHREAD_COUNT" ] && func_gather_cores_for_iothreads
 ## END ## Call function to iterate through iothreads for null run
-## BEGIN ## Establish reamining cores for the VM
+## BEGIN ## Process reamining cores for the VM
 	tail -n +`echo $(( $EMULATOR_COUNT + $IOTHREAD_COUNT + 1 ))` $WORKING_DIR/VM_CPU_CORES_ITERATED_SIBLINGS_UNIQ_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE
 	## This gets rid of all commas. Result is a single column of LCPUs
 	tr , '\n' < $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE
-## END ## Establish reamining cores for the VM
+## END ## Process reamining cores for the VM
 	}
 	echo "These are the CPUs on $THIS_LINE" 
 	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
+	## Note that the START variable is later populated with the .var file (coming from this variable in a null run) along with the END variable at the top of the func_use_cores_from_this_NUMA_node function. This ensures the variables get set in null and non-null runs
 	read START
 	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
 	echo $START > $WORKING_DIR/START_$THIS_NUMA_NODE.var
