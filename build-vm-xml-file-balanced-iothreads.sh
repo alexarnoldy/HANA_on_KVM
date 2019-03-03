@@ -24,12 +24,15 @@ WORKING_DIR=/tmp/$$
 mkdir -p $WORKING_DIR
 
 ## New attempt to test for command line option and gather input if there isn't one
-[ -z "$WORKING_DIR" ] && echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:" && read VM_NAME
+[ -z "$WORKING_DIR" ] && echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:" && read VM_NAME && echo $VM_NAME > $WORKING_DIR/VM_NAME.var
+## New attempt to test for command line option and set the variable name if there is one
+[ -n "$WORKING_DIR" ] && VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
 ## Old way of gathering info
 #echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
 #read VM_NAME
+## New attempt to test for command line option and gather input if there isn't one. Commend out here and moved into the -z test above
 	## Need to populate the file below for future non-interactive runs. 
-echo $VM_NAME > $WORKING_DIR/VM_NAME.var
+#echo $VM_NAME > $WORKING_DIR/VM_NAME.var
 echo ""
 echo ""
 #echo -e "    Enter the absolute path name to place the output file:"
@@ -49,6 +52,7 @@ do
 	THIS_NUMA_NODE=`echo $THIS_LINE | awk '{print$1}'`
 ## BEGIN ## Function to gather and process core information from this NUMA node only if the START value is populated
 ## BEGIN ## Gather cores for the VM
+	## Note that this function will be bypassed if there is not the START variable is not populated
 	func_use_cores_from_this_NUMA_node () {
 	echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:"
 	read END
@@ -109,6 +113,7 @@ do
 	tr , '\n' < $WORKING_DIR/VM_CPU_CORES_REMAINING_$THIS_NUMA_NODE > $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_$THIS_NUMA_NODE
 ## END ## Process reamining cores for the VM
 	}
+	## Note that the START variable must be populated for a NUMA node to enter the func_use_cores_from_this_NUMA_node function, both in null and non-null runs
 	echo "These are the CPUs on $THIS_LINE" 
 	echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" 
 	## Note that the START variable is later populated with the .var file (coming from this variable in a null run) along with the END variable at the top of the func_use_cores_from_this_NUMA_node function. This ensures the variables get set in null and non-null runs
@@ -159,10 +164,14 @@ echo $MEMORY > $WORKING_DIR/MEMORY.var
 ## END ## Function to gather and process core information from this NUMA node only if the START value is populated
 
 ##### Test to run the input gathering (and currently processing as well) function only if there is no command line option provided (i.e. null run)
-[ -z "$WORKING_DIR" ] && func_gather_and_process_input
+#[ -z "$WORKING_DIR" ] && func_gather_and_process_input
+##### Temporary workaround to test new method of testing for CL option (i.e. non-null run) before interactive run
+func_gather_and_process_input
 
+##### Temporary workaround to test new method of testing for CL option (i.e. non-null run) before interactive run
+##### Commented out here and moved into the func_gather_and_process_input function
 ## Set VM_NAME in both null and non-null runs
-VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
+#VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
 
 ## Set count of vCPUs in both null and non-null runs
 TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
