@@ -2,6 +2,22 @@
 
 ##### NEED TO TEST FOR XMLSTARLET (AKA XML), VIRT-INSTALL AND VIRT-XML 
 ## Script to create VM XML file, including vCPU, emulator, IOThread and NUMA node pinnings
+## This script can be run interactively by executing with no arguments, or non-interactively by providing
+## a single argument of an existing directory that contains files, each with the answer to the interactive questions.
+## The required files in the existing directory are:
+##	VM_NAME.var 		
+##	MEMORY.var 	
+##	START_NUMA_node0.var 		(plus the same for each additional NUMA node to be configured)
+##	END_NUMA_node0.var 		(plus the same for each additional NUMA node to be configured)
+##	EMULATOR_COUNT_NUMA_node0.var 	(plus the same for each additional NUMA node to be configured)
+##	IOTHREAD_COUNT_NUMA_node0.var 	(plus the same for each additional NUMA node to be configured)
+## If a feature is not to be configured for a NUMA nodes, i.e. emulator threads on 
+## NUMA node 1, remove that file from the direcory. 
+## DO NO USE 0 (ZERO) AS A VALUE IN INTERACTIVE OR NON-INTERACTIVE MODE
+
+RED='\033[0;31m'
+LBLUE='\033[1;36m'
+NC='\033[0m'
 
 if [ -z "$1" ]
 then
@@ -12,24 +28,10 @@ fi
 echo $NONINTERACTIVE
 
 WORKING_DIR=`echo $1` 
-RED='\033[0;31m'
-LBLUE='\033[1;36m'
-NC='\033[0m'
 
-##### Set the WORKING_DIR as the single command line option, which is the fully qualified pathname of a directory. 
-##### Then will test to see if it is null (around line 150). 
-##### If null, run func_gather_and_process_input (), which will reset WORKING_DIR to a directory named after the PID of the script. 
-##### If not-null, will use values from the files in the named (and existing) directory.
-##### DONE: Create the .var files from the gathered input (on a null run)
-##### DONE: Set the variables from the .var files.
-##### TODO: Separate the input loop from the file generating loop. Step one will be to dupliate the functions, comment out the appropriate sections of each and remove the function
-##### TODO: One way might be to test for $1 before each input and variable gather step
 
 func_gather_and_process_input () {
 
-## New attempt to test for command line option and gather input if there isn't one
-#[ -z "$WORKING_DIR" ] && echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:" && read VM_NAME && echo $VM_NAME > $WORKING_DIR/VM_NAME.var
-#[ -z "$1" ] && echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:" && read VM_NAME && WORKING_DIR=/tmp/$$ && mkdir -p $WORKING_DIR && echo $VM_NAME > $WORKING_DIR/VM_NAME.var
 if [ -z "$NONINTERACTIVE" ]
 then
 	echo $1
@@ -41,22 +43,11 @@ else
 	mkdir -p $WORKING_DIR 
 	echo $VM_NAME > $WORKING_DIR/VM_NAME.var
 fi
-## New attempt to test for command line option and set the variable name if there is one
-#[ -n "$WORKING_DIR" ] && VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
-#[ !-z "$1" ] && echo $1 &&  WORKING_DIR=`echo $1` && VM_NAME=`cat $WORKING_DIR/VM_NAME.var` 
-## Old way of gathering info
-#echo -e "    Enter the ${LBLUE}NAME${NC} of the VM:"
-#read VM_NAME
-## New attempt to test for command line option and gather input if there isn't one. Commend out here and moved into the -z test above
-##	## Need to populate the file below for future non-interactive runs. 
-#echo $VM_NAME > $WORKING_DIR/VM_NAME.var
 echo ""
 echo ""
-#echo -e "    Enter the absolute path name to place the output file:"
-#read PATH_TO_OUTPUT_FILE
 FILE_LOCATION=$WORKING_DIR/$VM_NAME.xml
 echo ""
-echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
+#echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
 echo ""
 echo ""
 
@@ -79,10 +70,6 @@ do
 		read END 
 		echo $END > $WORKING_DIR/END_$THIS_NUMA_NODE.var
 	fi
-	## New attempt to test for command line option and gather input if there isn't one (i.e. the variable "iz" null)
-	#[ -z "$WORKING_DIR" ] && echo -e "    Enter the ${LBLUE}LAST${NC} CPU to be allocated to this VM:" && read END && echo $END > $WORKING_DIR/END_$THIS_NUMA_NODE.var
-	## New attempt to test for command line option and set the variable name if there is one (i.e. the variable is non-null)
-	#[ -n "$WORKING_DIR" ]  && END=`cat $WORKING_DIR/END_$THIS_NUMA_NODE.var`
 ## END ## Gather cores for the VM
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
@@ -101,7 +88,6 @@ do
 	}
 ## END ## Function to iterate through emulator threads
 ## BEGIN ## Gather cores for emulator threads
-	## New attempt to test for command line option and gather input if there isn't one (i.e. the variable "iz" null)
 	if [ -z "$NONINTERACTIVE" ]
 	then
 		EMULATOR_COUNT=`cat $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var`
@@ -110,9 +96,6 @@ do
 		read EMULATOR_COUNT 
 		echo $EMULATOR_COUNT > $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var
 	fi
-	#[ -z "$WORKING_DIR" ] && echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU Emulator threads${NC} (Just press Enter to skip this NUMA node)?" && read EMULATOR_COUNT && echo $EMULATOR_COUNT > $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var
-	## New attempt to test for command line option and set the variable name if there is one (i.e. the variable is non-null)
-	#[ -n "$WORKING_DIR" ] && EMULATOR_COUNT=`cat $WORKING_DIR/EMULATOR_COUNT_$THIS_NUMA_NODE.var`
 ## END ## Gather cores for emulator threads
 ## BEGIN ## Call function to iterate through emulator threads for null run
 	[ -n "$EMULATOR_COUNT" ] && func_gather_cores_for_emulator_threads
@@ -136,13 +119,8 @@ do
 		read IOTHREAD_COUNT 
 		echo $IOTHREAD_COUNT > $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var
 	fi
-	## New attempt to test for command line option and gather input if there isn't one (i.e. the variable "iz" null)
-	#[ -z "$WORKING_DIR" ] && echo -e "    How many CPU cores from this NUMA node will be used for ${LBLUE}QEMU  IOThreads${NC} (Just press Enter to skip this NUMA node)?" && read IOTHREAD_COUNT && echo $IOTHREAD_COUNT > $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var
-	## New attempt to test for command line option and set the variable name if there is one (i.e. the variable is non-null)
-	#[ -n "$WORKING_DIR" ] &&  IOTHREAD_COUNT=`cat $WORKING_DIR/IOTHREAD_COUNT_$THIS_NUMA_NODE.var`
 ## END ## Gather cores for iothreads
 ## BEGIN ## Call function to iterate through iothreads for null run
-	## Need to populate the file below for future non-interactive runs. Need to move this inside the function.
 	[ -n "$IOTHREAD_COUNT" ] && func_gather_cores_for_iothreads
 ## END ## Call function to iterate through iothreads for null run
 ## BEGIN ## Process reamining cores for the VM
@@ -161,10 +139,6 @@ do
 		read START 
 		echo $START > $WORKING_DIR/START_$THIS_NUMA_NODE.var
 	fi
-	## New attempt to test for command line option and gather input if there isn't one (i.e. the variable "iz" null)
-	#[ -z "$WORKING_DIR" ] && echo "These are the CPUs on $THIS_LINE" && echo -e "    Enter the ${LBLUE}FIRST${NC} CPU from this NUMA node to be allocated to this VM (Just press Enter to skip this NUMA node):" &&  read START && echo $START > $WORKING_DIR/START_$THIS_NUMA_NODE.var
-	## New attempt to test for command line option and set the variable name if there is one (i.e. the variable is non-null)
-	#[ -n "$WORKING_DIR" ] &&  START=`cat $WORKING_DIR/START_$THIS_NUMA_NODE.var`
 	## If the value of $START is non-null, run the above function to gather CPU info for this NUMA node
 	[ -n "$START" ] && func_use_cores_from_this_NUMA_node
 	let COUNTER=COUNTER+1
@@ -213,19 +187,12 @@ fi
 }
 ## END ## Function to gather and process core information from this NUMA node only if the START value is populated
 
-##### Test to run the input gathering (and currently processing as well) function only if there is no command line option provided (i.e. null run)
-#[ -z "$WORKING_DIR" ] && func_gather_and_process_input
-##### Temporary workaround to test new method of testing for CL option (i.e. non-null run) before interactive run
+##### This lingering function is a byproduct of past requirements and will be removed in the near future
 func_gather_and_process_input
 
-##### Temporary workaround to test new method of testing for CL option (i.e. non-null run) before interactive run
-##### Commented out here and moved into the func_gather_and_process_input function
-## Set VM_NAME in both null and non-null runs
-#VM_NAME=`cat $WORKING_DIR/VM_NAME.var`
 
 ## Set count of vCPUs in both null and non-null runs
 TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'`
-#echo $TOTAL_VCPUS
 
 ####
 ## Beginning of creating the XML file
@@ -344,5 +311,9 @@ mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 #cat $FILE_LOCATION
+echo ""
+echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
+echo ""
+echo ""
 
 ####### virt-install --name test --memory 4096 --vcpu 2 --disk none --pxe --print-xml --dry-run --cputune vcpupin0.vcpu=0,vcpupin0.cpuset=2,vcpupin1.vcpu=1,vcpupin1.cpuset=8
