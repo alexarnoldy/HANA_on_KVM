@@ -298,8 +298,9 @@ done
 ## vcpu placement
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 virt-xml --edit  --vcpu placement="static" < $FILE_LOCATION > $FILE_LOCATION.tmp
-mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
-virt-xml --edit  --vcpu cpuset="`cat $WORKING_DIR/VM_CPU_REMAINING_COMMA_SEPARATED`" < $FILE_LOCATION > $FILE_LOCATION.tmp
+## Commented out as it seems like "vcpu cpuset" is ignored if emulatorpin or vcpupin is set
+#mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+#virt-xml --edit  --vcpu cpuset="`cat $WORKING_DIR/VM_CPU_REMAINING_COMMA_SEPARATED`" < $FILE_LOCATION > $FILE_LOCATION.tmp
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 virt-xml --edit --vcpu=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
 
@@ -317,4 +318,3 @@ echo -e "    ${LBLUE}The final VM XML will be: $FILE_LOCATION${NC}"
 echo ""
 echo ""
 
-####### virt-install --name test --memory 4096 --vcpu 2 --disk none --pxe --print-xml --dry-run --cputune vcpupin0.vcpu=0,vcpupin0.cpuset=2,vcpupin1.vcpu=1,vcpupin1.cpuset=8
