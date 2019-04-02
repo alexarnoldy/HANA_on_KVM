@@ -198,7 +198,8 @@ TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk 
 ## Beginning of creating the XML file
 ####
 FILE_LOCATION=$WORKING_DIR/$VM_NAME.xml
-virt-install --name $VM_NAME --memory $MEMORY --vcpu $TOTAL_VCPUS --disk none --pxe --print-xml 2 --dry-run > $FILE_LOCATION
+virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "kvmvm19"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk /dev/disk/by-id/wwn-0x600000e00d29000000293db0007e0000,bus=virtio --graphics none --location http://dist.suse.de/install/SLP/SLE-15-Installer-TEST/x86_64/DVD1/ --extra-args='autoyast=http://qa-css-hq.qa.suse.de/tftp/xml/profile/' --print-xml 2 --dry-run > $FILE_LOCATION
+
 
 #### Begin xml (xmlstarlet) updates to the base file created by virt-install
 #### Use xml el -v <file> to see all fo the elements, attributes, and values #### 
