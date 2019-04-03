@@ -149,17 +149,24 @@ done
 #### BEGIN #### Consolidate lists from all NUMA nodes for null and non-null runs
 
 ## Consolidate cores from each NUMA node into single list of cores to be used for QEMU emulator threads
-cat $WORKING_DIR/VM_CPU_CORES_EMULATOR_* > $WORKING_DIR/VM_CPU_CORES_EMULATOR
+cat $WORKING_DIR/VM_CPU_CORES_EMULATOR_* > $WORKING_DIR/VM_CPU_CORES_EMULATOR 2>/dev/null
+func_consolidate_emulator_thread_cores () {
 VM_CPU_CORES_EMULATOR=`cat $WORKING_DIR/VM_CPU_CORES_EMULATOR`
 echo "${VM_CPU_CORES_EMULATOR::-1}" > $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp
 mv $WORKING_DIR/VM_CPU_CORES_EMULATOR.tmp $WORKING_DIR/VM_CPU_CORES_EMULATOR
+}
+[ `wc -l $WORKING_DIR/VM_CPU_CORES_EMULATOR | awk '{print$1}'` -gt 0 ] && func_consolidate_emulator_thread_cores
 
 ## Consolidate cores from each NUMA node into single list of cores to be used for QEMU IOThreads
-cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS_* > $WORKING_DIR/VM_CPU_CORES_IOTHREADS
+cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS_* > $WORKING_DIR/VM_CPU_CORES_IOTHREADS 2>/dev/null
+func_consolidate_IO_thread_cores () {
 VM_CPU_CORES_IOTHREADS=`cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS`
 echo "${VM_CPU_CORES_IOTHREADS::-1}" > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
 mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS
 cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS_* > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
+}
+[ -f $WORKING_DIR/VM_CPU_CORES_IOTHREADS ] && func_consolidate_IO_thread_cores
+[ `wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS | awk '{print$1}'` -gt 0 ] && func_consolidate_IO_thread_cores
 
 ## Consolidate cores from each NUMA node into single list of cores to be used for vCPUs
 ## Need three outputs: vCPUs+Siblings in a single column, vCPUs+Siblings in comma separated list, a count of vCPUs
@@ -198,7 +205,7 @@ TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk 
 ## Beginning of creating the XML file
 ####
 FILE_LOCATION=$WORKING_DIR/$VM_NAME.xml
-virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "kvmvm19"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk /dev/disk/by-id/wwn-0x600000e00d29000000293db0007e0000,bus=virtio --graphics vnc --location http://dist.suse.de/install/SLP/SLE-15-Installer-TEST/x86_64/DVD1/ --extra-args='autoyast=http://qa-css-hq.qa.suse.de/tftp/xml/profile/' --print-xml 2 --dry-run > $FILE_LOCATION
+virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "$VM_NAME"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk /dev/disk/by-id/wwn-0x600000e00d29000000293db0007e0000,bus=virtio --graphics vnc --location http://dist.suse.de/install/SLP/SLE-15-Installer-TEST/x86_64/DVD1/ --extra-args='autoyast=http://qa-css-hq.qa.suse.de/tftp/xml/profile/' --print-xml 2 --dry-run > $FILE_LOCATION
 
 
 #### Begin xml (xmlstarlet) updates to the base file created by virt-install
@@ -293,7 +300,10 @@ do
 	LINES=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'`
 done
 
-#### Begin virt-xml updates to the XML file
+
+################################################
+#### Begin virt-xml updates to the XML file ####
+################################################
 
 ## vcpu placement
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
