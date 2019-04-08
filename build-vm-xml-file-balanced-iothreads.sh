@@ -71,6 +71,9 @@ do
 		echo $END > $WORKING_DIR/END_$THIS_NUMA_NODE.var
 	fi
 ## END ## Gather cores for the VM
+## BEGIN ## Establish final hyper-thread sibling for vCPU to NUMA node mapping
+	awk -F, '{print$2}' /sys/devices/system/cpu/cpu$END/topology/thread_siblings_list > $WORKING_DIR/VM_FINAL_HT_SIBLING_$THIS_NUMA_NODE
+## END ## Establish final hyper-thread sibling for vCPU to NUMA node mapping
 ## BEGIN ## Iterate through the cores to find the hyper-thread siblings
 	cat /dev/null > $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE
 	while [ $START -le $END ]; do  echo $START >> $WORKING_DIR/VM_CPU_CORES_ITERATED_$THIS_NUMA_NODE; START=$(($START+1));done
@@ -148,6 +151,8 @@ done
 
 #### BEGIN #### Consolidate lists from all NUMA nodes for null and non-null runs
 
+## Consolidate final hyper-thread siblings per NUMA node for vCPU to NUMA node mapping
+cat $WORKING_DIR/VM_FINAL_HT_SIBLING_* > $WORKING_DIR/VM_FINAL_HT_SIBLING 2>/dev/null
 ## Consolidate cores from each NUMA node into single list of cores to be used for QEMU emulator threads
 cat $WORKING_DIR/VM_CPU_CORES_EMULATOR_* > $WORKING_DIR/VM_CPU_CORES_EMULATOR 2>/dev/null
 func_consolidate_emulator_thread_cores () {
