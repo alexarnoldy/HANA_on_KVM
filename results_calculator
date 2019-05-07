@@ -1,0 +1,135 @@
+#!/bin/bash
+
+#### BEGIN functions
+## Most functions need variable $ARRAY_FILE set before entering
+
+func_get_column () {
+## Needs variables $COLUMN and $ARRAY_FILE set before entering
+cd $DEFAULT_DIR
+/HANAonKVM/Test_Kits/ML4/ML4_0.7analyze -d /HANAonKVM/Test_Kits/ML4/ML4_0.7analyze.def  %certification -s 2 *users*/check* | grep $ML4_TESTNAME | grep -v warm | awk -v COLUMN="$COLUMN" '{print$COLUMN}'  | sort > $OUTPUT_DIR/$ARRAY_FILE
+cp $OUTPUT_DIR/$ARRAY_FILE $OUTPUT_DIR/WORKING_FILE
+}
+
+func_get_truncated_column () {
+tail -n +2 $OUTPUT_DIR/WORKING_FILE | head -n  -1 >  $OUTPUT_DIR/$ARRAY_FILE`echo _TRUNC`
+cp $OUTPUT_DIR/$ARRAY_FILE`echo _TRUNC` $OUTPUT_DIR/WORKING_FILE
+}
+
+func_mean () {
+awk '{ total += $1 } END { print total/NR }' $OUTPUT_DIR/WORKING_FILE
+}
+
+func_median () {
+awk ' { a[i++]=$1; }                                                                        
+    END { x=int((i+1)/2); if (x < (i+1)/2) print (a[x-1]+a[x])/2; else print a[x-1]; }' $OUTPUT_DIR/WORKING_FILE
+}
+
+func_range () {
+FIRST=`head -1 $OUTPUT_DIR/WORKING_FILE`
+LAST=`tail -1 $OUTPUT_DIR/WORKING_FILE`
+awk -v f=$FIRST -v l=$LAST 'BEGIN{print((l/f-1)*100)}'
+}
+
+#### END functions
+
+#### BEGIN Gather input
+DEFAULT_DIR=/HANAonKVM/Results_Incoming/ML4/kvmhost1_kvmskx1ic/
+OUTPUT_DIR=/tmp/
+ARRAY_FILE=array_file
+
+echo ""
+echo "Enter results directory (default $DEFAULT_DIR): "
+
+read RESULTS_DIR
+
+[ -n "$RESULTS_DIR" ] && DEFAULT_DIR=$RESULTS_DIR
+
+
+
+echo ""
+echo "Enter ML4_TESTNAME: "
+
+read ML4_TESTNAME
+
+#[ -n "$ML4_TESTNAME" ] || echo "ML4_TESTNAME not found. Exiting..."; exit 1
+
+#### END Gather input
+
+cat /dev/null  > $OUTPUT_DIR/OUTPUT_FILE
+
+## Most calcualtions are run by:
+##  Change the OUTPUT_DIR, if desired
+##  Set the ARRAY_FILE variable
+##  Set the COLUMN variable
+##  Call the func_get_column fuction to process the entire output
+##  Optionally,call the func_get_truncated_column function, if truncated results are desired
+
+
+
+
+## Mean CPU
+COLUMN=6
+func_get_column
+echo "Number of CPU untilization results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Total CPU utilization results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+func_get_truncated_column
+echo "Truncated number of CPU untilization results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Truncated total CPU utilization results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+MEAN_CPU=`func_mean`
+echo "Mean CPU utilization: $MEAN_CPU" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "" >> $OUTPUT_DIR/OUTPUT_FILE
+  
+## Mean OLTP
+COLUMN=9
+func_get_column
+echo "Number of OLTP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Total OLTP MMV results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+func_get_truncated_column
+echo "Truncated number of OLTP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Truncated total OLTP MMV results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+MEAN_OLTP=`func_mean`
+echo "Mean OLTP MMV: $MEAN_OLTP" >> $OUTPUT_DIR/OUTPUT_FILE
+
+## Median OLTP
+COLUMN=9
+func_get_column
+func_get_truncated_column
+MEDIAN_OLTP=`func_median`
+echo "Median OLTP MMV: $MEDIAN_OLTP" >> $OUTPUT_DIR/OUTPUT_FILE
+
+## OLTP Range
+COLUMN=9
+func_get_column
+func_get_truncated_column
+OLTP_RANGE=`func_range`
+echo "OLTP Results Range: $OLTP_RANGE" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "" >> $OUTPUT_DIR/OUTPUT_FILE
+
+
+## Mean OLAP
+COLUMN=10
+func_get_column
+echo "Number of OLAP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Total OLAP MMV results: `cat $OUTPUT_DIR/WORKING_FILE| tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+func_get_truncated_column
+echo "Truncated number of OLAP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Truncated total OLAP MMV results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+MEAN_OLAP=`func_mean`
+echo "Mean OLAP MMV: $MEAN_OLAP" >> $OUTPUT_DIR/OUTPUT_FILE
+
+## Median OLAP
+COLUMN=10
+func_get_column
+func_get_truncated_column
+MEDIAN_OLAP=`func_median`
+echo "Median OLAP MMV: $MEDIAN_OLAP" >> $OUTPUT_DIR/OUTPUT_FILE
+
+## OLAP Range
+COLUMN=10
+func_get_column
+func_get_truncated_column
+OLAP_RANGE=`func_range`
+echo "OLAP Results Range: $OLAP_RANGE" >> $OUTPUT_DIR/OUTPUT_FILE
+
+echo "cat $OUTPUT_DIR/OUTPUT_FILE"
+cat $OUTPUT_DIR/OUTPUT_FILE
