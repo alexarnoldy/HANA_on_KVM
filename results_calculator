@@ -5,38 +5,50 @@
 
 func_get_column () {
 ## Needs variables $COLUMN and $ARRAY_FILE set before entering
-cd $DEFAULT_DIR
-/HANAonKVM/Test_Kits/ML4/ML4_0.7analyze -d /HANAonKVM/Test_Kits/ML4/ML4_0.7analyze.def  %certification -s 2 *users*/check* | grep $ML4_TESTNAME | grep -v warm | awk -v COLUMN="$COLUMN" '{print$COLUMN}'  | sort > $OUTPUT_DIR/$ARRAY_FILE
-cp $OUTPUT_DIR/$ARRAY_FILE $OUTPUT_DIR/WORKING_FILE
+## awk commands below (and at the end of the script): 
+##    awk -v FOO="$BAR"  sets the awk variable FOO from the shell variable BAR
+##    awk '(NR>1) && ($2 > 0){print$1}'  goes through every line in the file 
+##      and only prints the line (in this case the first column of the line) if column 3 is greater than 0
+##    awk 'END{print NR}  same as wc -l but doesn't print the name of the file
+#/HANAonKVM/Test_Kits/ML4/ML4_0.7analyze -d /HANAonKVM/Test_Kits/ML4/ML4_0.7analyze.def  %certification -s 2 *users*/check* | grep $ML4_TESTNAME | grep -v warm | awk -v COLUMN="$COLUMN" '{print$COLUMN}'  | sort -n > $OUTPUT_DIR/$ARRAY_FILE
+grep $ML4_TESTNAME $OUTPUT_DIR/$RAW_FILE | grep -v warm | awk -v COLUMN="$COLUMN" '{print$COLUMN}'  | sort -n > $OUTPUT_DIR/$ARRAY_FILE
+cp $OUTPUT_DIR/$ARRAY_FILE $OUTPUT_DIR/$WORKING_FILE
 }
 
 func_get_truncated_column () {
-tail -n +2 $OUTPUT_DIR/WORKING_FILE | head -n  -1 >  $OUTPUT_DIR/$ARRAY_FILE`echo _TRUNC`
-cp $OUTPUT_DIR/$ARRAY_FILE`echo _TRUNC` $OUTPUT_DIR/WORKING_FILE
+tail -n +2 $OUTPUT_DIR/$WORKING_FILE | head -n  -1 >  $OUTPUT_DIR/$ARRAY_FILE`echo _TRUNC`
+cp $OUTPUT_DIR/$ARRAY_FILE`echo _TRUNC` $OUTPUT_DIR/$WORKING_FILE
 }
 
 func_mean () {
-awk '{ total += $1 } END { print total/NR }' $OUTPUT_DIR/WORKING_FILE
+awk '{ total += $1 } END { print total/NR }' $OUTPUT_DIR/$WORKING_FILE
 }
 
 func_median () {
 awk ' { a[i++]=$1; }                                                                        
-    END { x=int((i+1)/2); if (x < (i+1)/2) print (a[x-1]+a[x])/2; else print a[x-1]; }' $OUTPUT_DIR/WORKING_FILE
+    END { x=int((i+1)/2); if (x < (i+1)/2) print (a[x-1]+a[x])/2; else print a[x-1]; }' $OUTPUT_DIR/$WORKING_FILE
 }
 
 func_range () {
-FIRST=`head -1 $OUTPUT_DIR/WORKING_FILE`
-LAST=`tail -1 $OUTPUT_DIR/WORKING_FILE`
+FIRST=`head -1 $OUTPUT_DIR/$WORKING_FILE`
+LAST=`tail -1 $OUTPUT_DIR/$WORKING_FILE`
 awk -v f=$FIRST -v l=$LAST 'BEGIN{print((l/f-1)*100)}'
 }
 
 #### END functions
 
-#### BEGIN Gather input
-DEFAULT_DIR=/HANAonKVM/Results_Incoming/ML4/kvmhost1_kvmskx1ic/
+#### BEGIN Set variables
+DEFAULT_DIR=`cat /tmp/default_dir`
+ML4_TESTNAME=`cat /tmp/default_testname`
 OUTPUT_DIR=/tmp/
+OUTPUT_FILE=output_file
 ARRAY_FILE=array_file
+WORKING_FILE=working_file
+ERROR_FILE=error_file
+RAW_FILE=raw_file
+#### END Set variables
 
+#### BEGIN Gather input
 echo ""
 echo "Enter results directory (default $DEFAULT_DIR): "
 
@@ -44,18 +56,32 @@ read RESULTS_DIR
 
 [ -n "$RESULTS_DIR" ] && DEFAULT_DIR=$RESULTS_DIR
 
-
+echo $DEFAULT_DIR > /tmp/default_dir
 
 echo ""
-echo "Enter ML4_TESTNAME: "
+echo "Enter ML4_TESTNAME(default $ML4_TESTNAME): "
 
-read ML4_TESTNAME
+read DEFAULT_TESTNAME
 
-#[ -n "$ML4_TESTNAME" ] || echo "ML4_TESTNAME not found. Exiting..."; exit 1
+[ -n "$DEFAULT_TESTNAME" ] && ML4_TESTNAME=$DEFAULT_TESTNAME
 
+echo $ML4_TESTNAME > /tmp/default_testname
 #### END Gather input
 
-cat /dev/null  > $OUTPUT_DIR/OUTPUT_FILE
+cat /dev/null  > $OUTPUT_DIR/$OUTPUT_FILE
+
+## BEGIN Process out error runs
+cd $DEFAULT_DIR; /HANAonKVM/Test_Kits/ML4/ML4_0.7analyze -d /HANAonKVM/Test_Kits/ML4/ML4_0.7analyze.def  %certification -s 2 *users*/check* | grep $ML4_TESTNAME | grep -v warm > $OUTPUT_DIR/$RAW_FILE
+awk '(NR>1) && ($2 > 0){print$1}' $OUTPUT_DIR/$RAW_FILE > $OUTPUT_DIR/$ERROR_FILE
+awk '(NR>1) && ($3 > 0){print$1}' $OUTPUT_DIR/$RAW_FILE >> $OUTPUT_DIR/$ERROR_FILE
+cat $OUTPUT_DIR/$ERROR_FILE | sort | uniq > $OUTPUT_DIR/tmp_file
+mv $OUTPUT_DIR/tmp_file $OUTPUT_DIR/$ERROR_FILE
+for EACH in `cat $OUTPUT_DIR/$ERROR_FILE`
+do
+        grep -v "$EACH" $OUTPUT_DIR/$RAW_FILE >  $OUTPUT_DIR/tmp_file
+        mv $OUTPUT_DIR/tmp_file $OUTPUT_DIR/$RAW_FILE
+done
+## END Process out error runs
 
 ## Most calcualtions are run by:
 ##  Change the OUTPUT_DIR, if desired
@@ -70,66 +96,76 @@ cat /dev/null  > $OUTPUT_DIR/OUTPUT_FILE
 ## Mean CPU
 COLUMN=6
 func_get_column
-echo "Number of CPU untilization results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
-echo "Total CPU utilization results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Number of error-free CPU untilization results found: `awk 'END{print NR}' $OUTPUT_DIR/$WORKING_FILE`" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "Total CPU utilization results: `cat $OUTPUT_DIR/$WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/$OUTPUT_FILE
 func_get_truncated_column
-echo "Truncated number of CPU untilization results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
-echo "Truncated total CPU utilization results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Truncated number of error-free CPU untilization results found: `awk 'END{print NR}' $OUTPUT_DIR/$WORKING_FILE`" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "Truncated total CPU utilization results: `cat $OUTPUT_DIR/$WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/$OUTPUT_FILE
 MEAN_CPU=`func_mean`
-echo "Mean CPU utilization: $MEAN_CPU" >> $OUTPUT_DIR/OUTPUT_FILE
-echo "" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Mean CPU utilization: $MEAN_CPU" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "" >> $OUTPUT_DIR/$OUTPUT_FILE
   
 ## Mean OLTP
 COLUMN=9
 func_get_column
-echo "Number of OLTP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
-echo "Total OLTP MMV results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Number of error-free OLTP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/$WORKING_FILE`" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "Total OLTP MMV results: `cat $OUTPUT_DIR/$WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/$OUTPUT_FILE
 func_get_truncated_column
-echo "Truncated number of OLTP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
-echo "Truncated total OLTP MMV results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Truncated number of error-free OLTP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/$WORKING_FILE`" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "Truncated total OLTP MMV results: `cat $OUTPUT_DIR/$WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/$OUTPUT_FILE
 MEAN_OLTP=`func_mean`
-echo "Mean OLTP MMV: $MEAN_OLTP" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Mean OLTP MMV: $MEAN_OLTP" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 ## Median OLTP
 COLUMN=9
 func_get_column
 func_get_truncated_column
 MEDIAN_OLTP=`func_median`
-echo "Median OLTP MMV: $MEDIAN_OLTP" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Median OLTP MMV: $MEDIAN_OLTP" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 ## OLTP Range
 COLUMN=9
 func_get_column
 func_get_truncated_column
 OLTP_RANGE=`func_range`
-echo "OLTP Results Range: $OLTP_RANGE" >> $OUTPUT_DIR/OUTPUT_FILE
-echo "" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "OLTP Results Range: $OLTP_RANGE" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 
 ## Mean OLAP
 COLUMN=10
 func_get_column
-echo "Number of OLAP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
-echo "Total OLAP MMV results: `cat $OUTPUT_DIR/WORKING_FILE| tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Number of error-free OLAP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/$WORKING_FILE`" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "Total OLAP MMV results: `cat $OUTPUT_DIR/$WORKING_FILE| tr '\n' " "`" >> $OUTPUT_DIR/$OUTPUT_FILE
 func_get_truncated_column
-echo "Truncated number of OLAP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/WORKING_FILE`" >> $OUTPUT_DIR/OUTPUT_FILE
-echo "Truncated total OLAP MMV results: `cat $OUTPUT_DIR/WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Truncated number of error-free OLAP MMV results found: `awk 'END{print NR}' $OUTPUT_DIR/$WORKING_FILE`" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "Truncated total OLAP MMV results: `cat $OUTPUT_DIR/$WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/$OUTPUT_FILE
 MEAN_OLAP=`func_mean`
-echo "Mean OLAP MMV: $MEAN_OLAP" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Mean OLAP MMV: $MEAN_OLAP" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 ## Median OLAP
 COLUMN=10
 func_get_column
 func_get_truncated_column
 MEDIAN_OLAP=`func_median`
-echo "Median OLAP MMV: $MEDIAN_OLAP" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "Median OLAP MMV: $MEDIAN_OLAP" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 ## OLAP Range
 COLUMN=10
 func_get_column
 func_get_truncated_column
 OLAP_RANGE=`func_range`
-echo "OLAP Results Range: $OLAP_RANGE" >> $OUTPUT_DIR/OUTPUT_FILE
+echo "OLAP Results Range: $OLAP_RANGE" >> $OUTPUT_DIR/$OUTPUT_FILE
 
-echo "cat $OUTPUT_DIR/OUTPUT_FILE"
-cat $OUTPUT_DIR/OUTPUT_FILE
+## Error Runs
+echo "" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "There were `awk 'END{print NR}' $OUTPUT_DIR/$ERROR_FILE` runs with ML4 errors encountered (which were not included in the calulations)" >> $OUTPUT_DIR/$OUTPUT_FILE
+
+
+echo ""
+echo "Output file is located at: $OUTPUT_DIR$OUTPUT_FILE"
+clear; cat $OUTPUT_DIR/$OUTPUT_FILE
+ rm $OUTPUT_DIR/$ARRAY_FILE
+ rm $OUTPUT_DIR/$WORKING_FILE
+ rm $OUTPUT_DIR/$ERROR_FILE
+ rm $OUTPUT_DIR/$RAW_FILE
