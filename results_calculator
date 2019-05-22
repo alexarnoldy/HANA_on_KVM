@@ -95,6 +95,7 @@ done
 ## Mean CPU
 COLUMN=6
 func_get_column
+echo "Test name: $ML4_TESTNAME" >> $OUTPUT_DIR/$OUTPUT_FILE
 echo "Number of error-free CPU untilization results found: `awk 'END{print NR}' $OUTPUT_DIR/$WORKING_FILE`" >> $OUTPUT_DIR/$OUTPUT_FILE
 echo "Total CPU utilization results: `cat $OUTPUT_DIR/$WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/$OUTPUT_FILE
 func_get_truncated_column
@@ -158,7 +159,7 @@ echo "OLAP Results Range: $OLAP_RANGE" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 ## Error Runs
 echo "" >> $OUTPUT_DIR/$OUTPUT_FILE
-echo "There were `awk 'END{print NR}' $OUTPUT_DIR/$ERROR_FILE` runs with ML4 errors encountered (which were not included in the calulations)" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "There were `awk 'END{print NR}' $OUTPUT_DIR/$ERROR_FILE` runs with ML4 errors encountered (test runs with errors are not included in the calulations)" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 
 echo ""
