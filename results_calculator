@@ -4,6 +4,7 @@
 ## Most functions need variable $ARRAY_FILE set before entering
 
 func_get_column () {
+## Note: Any functions run after this one will be run against the full dataset
 ## Needs variables $COLUMN and $ARRAY_FILE set before entering
 ## awk commands below (and at the end of the script): 
 ##    awk -v FOO="$BAR"  sets the awk variable FOO from the shell variable BAR
@@ -15,6 +16,7 @@ cp $OUTPUT_DIR/$ARRAY_FILE $OUTPUT_DIR/$WORKING_FILE
 }
 
 func_get_truncated_column () {
+## Note: Any functions run after this one will be run against a truncated dataset
 tail -n +2 $OUTPUT_DIR/$WORKING_FILE | head -n  -1 >  $OUTPUT_DIR/$ARRAY_FILE`echo _TRUNC`
 cp $OUTPUT_DIR/$ARRAY_FILE`echo _TRUNC` $OUTPUT_DIR/$WORKING_FILE
 }
@@ -102,8 +104,9 @@ func_get_truncated_column
 echo "Truncated number of error-free CPU untilization results found: `awk 'END{print NR}' $OUTPUT_DIR/$WORKING_FILE`" >> $OUTPUT_DIR/$OUTPUT_FILE
 echo "Truncated total CPU utilization results: `cat $OUTPUT_DIR/$WORKING_FILE | tr '\n' " "`" >> $OUTPUT_DIR/$OUTPUT_FILE
 MEAN_CPU=`func_mean`
-echo "Truncated Mean CPU utilization: $MEAN_CPU" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "Truncated Mean CPU utilization: $MEAN_CPU%" >> $OUTPUT_DIR/$OUTPUT_FILE
 echo "" >> $OUTPUT_DIR/$OUTPUT_FILE
+
   
 ## Mean OLTP
 COLUMN=9
@@ -128,7 +131,7 @@ COLUMN=9
 func_get_column
 func_get_truncated_column
 OLTP_RANGE=`func_range`
-echo "OLTP Results Range: $OLTP_RANGE" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "OLTP Results Range: $OLTP_RANGE%" >> $OUTPUT_DIR/$OUTPUT_FILE
 echo "" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 
@@ -155,7 +158,7 @@ COLUMN=10
 func_get_column
 func_get_truncated_column
 OLAP_RANGE=`func_range`
-echo "OLAP Results Range: $OLAP_RANGE" >> $OUTPUT_DIR/$OUTPUT_FILE
+echo "OLAP Results Range: $OLAP_RANGE%" >> $OUTPUT_DIR/$OUTPUT_FILE
 
 ## Error Runs
 echo "" >> $OUTPUT_DIR/$OUTPUT_FILE
