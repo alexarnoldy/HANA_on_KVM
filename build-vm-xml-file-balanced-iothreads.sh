@@ -153,6 +153,7 @@ done
 
 ## Consolidate final hyper-thread siblings per NUMA node for vCPU to NUMA node mapping
 cat $WORKING_DIR/VM_FINAL_HT_SIBLING_* > $WORKING_DIR/VM_FINAL_HT_SIBLING 2>/dev/null
+
 ## Consolidate cores from each NUMA node into single list of cores to be used for QEMU emulator threads
 cat $WORKING_DIR/VM_CPU_CORES_EMULATOR_* > $WORKING_DIR/VM_CPU_CORES_EMULATOR 2>/dev/null
 func_consolidate_emulator_thread_cores () {
@@ -170,7 +171,6 @@ echo "${VM_CPU_CORES_IOTHREADS::-1}" > $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp
 mv $WORKING_DIR/VM_CPU_CORES_IOTHREADS.tmp $WORKING_DIR/VM_CPU_CORES_IOTHREADS
 cat $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS_* > $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS
 }
-[ -f $WORKING_DIR/VM_CPU_CORES_IOTHREADS ] && func_consolidate_IO_thread_cores
 [ `wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS | awk '{print$1}'` -gt 0 ] && func_consolidate_IO_thread_cores
 
 ## Consolidate cores from each NUMA node into single list of cores to be used for vCPUs
@@ -210,7 +210,16 @@ TOTAL_VCPUS=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS | awk 
 ## Beginning of creating the XML file
 ####
 FILE_LOCATION=$WORKING_DIR/$VM_NAME.xml
-virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "$VM_NAME"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk /dev/disk/by-id/wwn-0x600000e00d29000000293db0007e0000,bus=virtio --graphics vnc --location http://dist.suse.de/install/SLP/SLE-15-Installer-TEST/x86_64/DVD1/ --extra-args='autoyast=http://qa-css-hq.qa.suse.de/tftp/xml/profile/' --print-xml 2 --dry-run > $FILE_LOCATION
+
+########
+##virt-install command for testing
+########
+virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "$VM_NAME"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk none --graphics none --print-xml --dry-run > $FILE_LOCATION
+#virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "$VM_NAME"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk none --graphics vnc --location http://dist.suse.de/install/SLP/SLE-15-Installer-TEST/x86_64/DVD1/ --extra-args='autoyast=http://qa-css-hq.qa.suse.de/tftp/xml/profile/' --print-xml 2 --dry-run > $FILE_LOCATION
+########
+##virt-install command for creating a useable XML
+########
+#virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "$VM_NAME"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk /dev/disk/by-id/wwn-0x600000e00d29000000293db0007e0000,bus=virtio --graphics vnc --location http://dist.suse.de/install/SLP/SLE-15-Installer-TEST/x86_64/DVD1/ --extra-args='autoyast=http://qa-css-hq.qa.suse.de/tftp/xml/profile/' --print-xml 2 --dry-run > $FILE_LOCATION
 
 
 #### Begin xml (xmlstarlet) updates to the base file created by virt-install
@@ -247,7 +256,7 @@ do
 done
 
 
-## Add NUMA node pinning to the XML file
+## Add NUMA node pinning to the XML file. Establishes the remaining LCPUs mapped to their appropriate NUMA nodes
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 numactl --hardware | grep cpus | sed 's/node /node/' > $WORKING_DIR/NUMA_NODES_TO_CPUS
 cat /dev/null > $WORKING_DIR/ALL_NUMA_NODES
@@ -283,16 +292,20 @@ done
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed -u "domain/clock/timer[@name='hpet' and @present='no']"/@present -v yes $FILE_LOCATION > $FILE_LOCATION.tmp
 
-## Add emulatorpinning to the XML file
+## Add emulator pinning to the XML file
+func_add_emulator_pinning () {
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed --subnode "/domain/cputune" --type elem -n "emulatorpin cpuset='`cat $WORKING_DIR/VM_CPU_CORES_EMULATOR`'" -v "" $FILE_LOCATION > $FILE_LOCATION.tmp
+}
+[ `wc -l $WORKING_DIR/VM_CPU_CORES_EMULATOR | awk '{print$1}'` -gt 0 ] && func_add_emulator_pinning
 
 ## Add total number of iothreads to the XML file
 ## virt-install and virt-xml don't seem to support iothreads
+func_add_iothread_number_and_pinning () {
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 xml ed --subnode "/domain" --type elem -n "iothreads" -v "`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'`" $FILE_LOCATION > $FILE_LOCATION.tmp
 
-## Add iothreadpinning list to the XML file
+## Add iothread pinning list to the XML file
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 COUNTER=1 
 LINES=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` 
@@ -304,7 +317,8 @@ do
 	let COUNTER=COUNTER+1
 	LINES=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'`
 done
-
+}
+[ `wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS | awk '{print$1}'` -gt 0 ] && func_add_iothread_number_and_pinning
 
 ################################################
 #### Begin virt-xml updates to the XML file ####
@@ -323,6 +337,44 @@ virt-xml --edit --vcpu=`wc -l $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBL
 mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
 #virt-xml --add-device iothreads=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
 #virt-xml --edit --iothreads=`wc -l $WORKING_DIR/VM_CPU_CORES_IOTHREADS_SORTED_BY_SIBLINGS | awk '{print$1}'` < $FILE_LOCATION > $FILE_LOCATION.tmp
+
+## NUMA node to vCPU mapping
+mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+
+#Creates first and last LCPU per NUMA nodes:
+#for EACH in `ls -1 VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_NUMA_node*`; do NUMA_NODE=`echo $EACH | awk -Fe '{print$2}'`; head -1 $EACH > VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_FIRST$NUMA_NODE; tail -1 $EACH > VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_LAST$NUMA_NODE; done
+
+#Creates first and last LCPU per NUMA nodes:
+for EACH in `ls -1 $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_NUMA_node*`
+do 
+	NUMA_NODE=`echo $EACH | awk -Fe '{print$2}'`
+	head -1 $EACH > $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_FIRST$NUMA_NODE
+	tail -1 $EACH > $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_LAST$NUMA_NODE
+done
+
+#Creates first VCPU per NUMA node:
+for EACH in `ls -1 $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_FIRST*`
+do 
+	FIRST_VCPU_FILE=`echo $EACH | awk -FFIRST '{print$2}'`
+	grep "cpuset=\"`cat $EACH`\"" $FILE_LOCATION | awk -F\" '{print$2}' > $WORKING_DIR/FIRST_VCPU_NUMA_NODE$FIRST_VCPU_FILE
+done
+
+#Creates last VCPU per NUMA node: 
+for EACH in `ls -1 $WORKING_DIR/VM_CPU_CORES_REMAINING_SORTED_BY_SIBLINGS_LAST*`
+do 
+	LAST_VCPU_FILE=`echo $EACH | awk -FLAST '{print$2}'`
+	grep "cpuset=\"`cat $EACH`\"" $FILE_LOCATION | awk -F\" '{print$2}' > $WORKING_DIR/LAST_VCPU_NUMA_NODE$LAST_VCPU_FILE
+done
+
+#Establishes KiB memory per NUMA node
+NUM_NUMA_NODES=`awk 'END{print NR}' $WORKING_DIR/ALL_NUMA_NODES_UNIQ`; MEMORY_PER_NUMA_NODE=$(echo $(( `cat $WORKING_DIR/MEMORY.var` * 1024 * 1024 / `echo $NUM_NUMA_NODES` )))
+for EACH in `cat $WORKING_DIR/ALL_NUMA_NODES_UNIQ`
+do 
+	FIRST=$(cat $WORKING_DIR/FIRST_VCPU_NUMA_NODE$EACH)
+	LAST=$(cat $WORKING_DIR/LAST_VCPU_NUMA_NODE$EACH)
+	virt-xml --edit --cpu cell$EACH.id=$EACH,cell$EACH.memory=$MEMORY_PER_NUMA_NODE,cell$EACH.cpus=$FIRST"-"$LAST < $FILE_LOCATION > $FILE_LOCATION.tmp
+	mv $FILE_LOCATION.tmp $FILE_LOCATION 2>/dev/null
+done
 
 
 
