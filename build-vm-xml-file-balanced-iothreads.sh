@@ -214,7 +214,7 @@ FILE_LOCATION=$WORKING_DIR/$VM_NAME.xml
 ########
 ##virt-install command for testing
 ########
-virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "$VM_NAME"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk none --graphics none --print-xml --dry-run --memballoon model='none' > $FILE_LOCATION
+virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "$VM_NAME"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk none --graphics none --print-xml --dry-run --memballoon model='none' --qemu-commandline="-cpu host,migratable=off,+invtsc,l3-cache=on" --rng /dev/random > $FILE_LOCATION
 #virt-install --name $VM_NAME --memory $MEMORY --boot=uefi --description "$VM_NAME"  --vcpu $TOTAL_VCPUS --os-type=Linux --os-variant=sles12 --disk none --graphics vnc --location http://dist.suse.de/install/SLP/SLE-15-Installer-TEST/x86_64/DVD1/ --extra-args='autoyast=http://qa-css-hq.qa.suse.de/tftp/xml/profile/' --print-xml 2 --dry-run > $FILE_LOCATION
 ########
 ##virt-install command for creating a useable XML
